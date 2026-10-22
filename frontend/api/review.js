@@ -1,3 +1,58 @@
+// Active key pointer retained across requests in same serverless instance
+let currentKeyIndex = 0;
+
+/**
+ * Collect and deduplicate Gemini API keys from environment variables.
+ * Supports:
+ *   - GEMINI_API_KEYS (comma-separated)
+ *   - GEMINI_API_KEY (single or comma-separated)
+ *   - GEMINI_API_KEY_1 ... GEMINI_API_KEY_20
+ */
+function getGeminiApiKeys() {
+  const keys = [];
+
+  if (process.env.GEMINI_API_KEYS) {
+    keys.push(...process.env.GEMINI_API_KEYS.split(','));
+  }
+  if (process.env.GEMINI_API_KEY) {
+    keys.push(...process.env.GEMINI_API_KEY.split(','));
+  }
+  for (let i = 1; i <= 20; i++) {
+    const k = process.env[`GEMINI_API_KEY_${i}`];
+    if (k) keys.push(k);
+  }
+
+  const cleaned = keys.map(k => k.trim()).filter(k => k.length > 0);
+  return [...new Set(cleaned)];
+}
+
+function maskKey(key) {
+  if (!key) return "none";
+  if (key.length <= 8) return "***";
+  return `...${key.slice(-6)}`;
+}
+
+function isExhaustionError(statusCode, message) {
+  if (statusCode === 429 || statusCode === 503) return true;
+  const lower = (message || '').toLowerCase();
+  const indicators = [
+    '429',
+    'resource_exhausted',
+    'resourceexhausted',
+    'quota',
+    'rate limit',
+    'rate_limit',
+    'too many requests',
+    'tokens per minute',
+    'requests per minute',
+    'exhausted',
+    'capacity',
+    'api_key_invalid',
+    'expired'
+  ];
+  return indicators.some(ind => lower.includes(ind));
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -11,7 +66,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ detail: "Method not allowed" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKeys = getGeminiApiKeys();
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
   const body = req.body || {};
@@ -67,8 +122,8 @@ export default async function handler(req, res) {
     return list;
   }
 
-  if (!apiKey) {
-    // If external GEMINI_API_KEY is not set in environment, use BrandGuard analysis engine
+  if (apiKeys.length === 0) {
+    // If no GEMINI_API_KEY is configured, use BrandGuard analysis engine
     return res.status(200).json({
       brand_name,
       model: `${model} (BrandGuard Engine)`,
@@ -103,88 +158,121 @@ Rules:
 - If there is no verified source rule, leave source_rule empty and set needs_human_review to true.
 `;
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: instructions }]
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: JSON.stringify({ brand_name, content }) }]
-          }
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              findings: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    phrase: { type: "STRING" },
-                    issue_type: { type: "STRING" },
-                    severity: { type: "STRING", enum: ["HIGH", "MEDIUM", "LOW"] },
-                    explanation: { type: "STRING" },
-                    suggested_fix: { type: "STRING" },
-                    confidence: { type: "INTEGER" },
-                    source_rule: { type: "STRING" },
-                    needs_human_review: { type: "BOOLEAN" }
-                  },
-                  required: ["phrase", "issue_type", "severity", "explanation", "suggested_fix", "confidence"]
+  let lastError = null;
+  const totalKeys = apiKeys.length;
+  const startIndex = currentKeyIndex;
+
+  for (let attempt = 0; attempt < totalKeys; attempt++) {
+    const keyIdx = (startIndex + attempt) % totalKeys;
+    const activeKey = apiKeys[keyIdx];
+    const masked = maskKey(activeKey);
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: instructions }]
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: JSON.stringify({ brand_name, content }) }]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                findings: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      phrase: { type: "STRING" },
+                      issue_type: { type: "STRING" },
+                      severity: { type: "STRING", enum: ["HIGH", "MEDIUM", "LOW"] },
+                      explanation: { type: "STRING" },
+                      suggested_fix: { type: "STRING" },
+                      confidence: { type: "INTEGER" },
+                      source_rule: { type: "STRING" },
+                      needs_human_review: { type: "BOOLEAN" }
+                    },
+                    required: ["phrase", "issue_type", "severity", "explanation", "suggested_fix", "confidence"]
+                  }
                 }
-              }
-            },
-            required: ["findings"]
+              },
+              required: ["findings"]
+            }
           }
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const errMsg = data.error?.message || `HTTP ${response.status}`;
+        if (isExhaustionError(response.status, errMsg)) {
+          console.warn(`[BrandGuard Agent] Key [${keyIdx + 1}/${totalKeys}] (${masked}) exhausted/rate-limited: ${errMsg}. Switching to next API key...`);
+          lastError = new Error(errMsg);
+          continue; // Fail over to next key
         }
-      })
-    });
+        throw new Error(errMsg);
+      }
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error?.message || `Gemini API error: ${response.status}`);
+      // Successful request - update active index
+      currentKeyIndex = keyIdx;
+
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const parsed = JSON.parse(text);
+      const rawFindings = parsed.findings || [];
+
+      const findings = rawFindings.map((item, i) => ({
+        id: `finding-${i + 1}`,
+        phrase: item.phrase,
+        issue_type: item.issue_type,
+        severity: item.severity,
+        explanation: item.explanation,
+        suggested_fix: item.suggested_fix,
+        confidence: item.confidence,
+        source_rule: item.source_rule || null,
+        needs_human_review: Boolean(!item.source_rule || item.needs_human_review)
+      }));
+
+      return res.status(200).json({
+        brand_name,
+        model,
+        original_content: content,
+        findings,
+        disclaimer: "AI-generated review only. Verify applicable brand policies before publication."
+      });
+
+    } catch (err) {
+      lastError = err;
+      if (isExhaustionError(0, err.message)) {
+        console.warn(`[BrandGuard Agent] Key [${keyIdx + 1}/${totalKeys}] (${masked}) encountered quota issue: ${err.message}. Switching to next API key...`);
+        continue;
+      }
+      console.error(`[BrandGuard Agent] Error with key (${masked}):`, err.message);
+      if (totalKeys > 1 && attempt < totalKeys - 1) {
+        continue;
+      }
+      break;
     }
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    const parsed = JSON.parse(text);
-    const rawFindings = parsed.findings || [];
-
-    const findings = rawFindings.map((item, i) => ({
-      id: `finding-${i + 1}`,
-      phrase: item.phrase,
-      issue_type: item.issue_type,
-      severity: item.severity,
-      explanation: item.explanation,
-      suggested_fix: item.suggested_fix,
-      confidence: item.confidence,
-      source_rule: item.source_rule || null,
-      needs_human_review: Boolean(!item.source_rule || item.needs_human_review)
-    }));
-
-    return res.status(200).json({
-      brand_name,
-      model,
-      original_content: content,
-      findings,
-      disclaimer: "AI-generated review only. Verify applicable brand policies before publication."
-    });
-  } catch (err) {
-    console.error("AI review handler error:", err);
-    return res.status(200).json({
-      brand_name,
-      model: `${model} (fallback engine)`,
-      original_content: content,
-      findings: getEngineFindings(content),
-      disclaimer: "AI review generated via BrandGuard engine."
-    });
   }
+
+  // If all keys in pool were exhausted or failed, fall back safely to BrandGuard engine
+  console.warn(`[BrandGuard Agent] All ${totalKeys} Gemini API keys failed or exhausted (${lastError?.message}). Falling back to BrandGuard engine.`);
+  return res.status(200).json({
+    brand_name,
+    model: `${model} (BrandGuard fallback engine)`,
+    original_content: content,
+    findings: getEngineFindings(content),
+    disclaimer: "AI review generated via BrandGuard engine (all configured Gemini API keys exhausted or rate-limited)."
+  });
 }
