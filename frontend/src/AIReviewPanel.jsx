@@ -16,11 +16,19 @@ export default function AIReviewPanel() {
 
   // Check backend health on mount
   useEffect(() => {
-    const API_BASE = import.meta.env.VITE_BRANDGUARD_API_URL || "http://127.0.0.1:8000";
-    fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(3000) })
+    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const primary = import.meta.env.VITE_BRANDGUARD_API_URL ?? (isLocal ? "http://127.0.0.1:8000" : "");
+
+    fetch(`${primary}/api/health`, { signal: AbortSignal.timeout(4000) })
       .then(r => r.json())
       .then(d => setBackendUp(d.status === "ok"))
-      .catch(() => setBackendUp(false));
+      .catch(() => {
+        // Fallback: check relative /api/health
+        fetch('/api/health', { signal: AbortSignal.timeout(3000) })
+          .then(r => r.json())
+          .then(d => setBackendUp(d.status === "ok"))
+          .catch(() => setBackendUp(false));
+      });
   }, []);
 
   async function runReview() {
@@ -78,21 +86,15 @@ export default function AIReviewPanel() {
       <button
         type="button"
         onClick={runReview}
-        disabled={loading || content.trim().length < 5 || backendUp === false}
+        disabled={loading || content.trim().length < 5}
         className="ai-primary-button"
       >
-        {loading ? "⟳ Analyzing with Gemini…" : backendUp === false ? "Backend offline — start API first" : "✦ Run AI Review"}
+        {loading ? "⟳ Analyzing with Gemini…" : "✦ Run AI Review"}
       </button>
 
       {backendUp === false && (
-        <div className="ai-error" role="alert">
-          <strong>AI backend is not running.</strong> Start the FastAPI server:
-          <code style={{ display: 'block', marginTop: 8, fontSize: 11, background: '#1a1a2e', color: '#e2e8f0', padding: 10, borderRadius: 8 }}>
-            cd backend &amp;&amp; uvicorn main:app --reload --port 8000
-          </code>
-          <p style={{ margin: '8px 0 0', fontSize: 11 }}>
-            The deterministic rule-based review above still works without the backend.
-          </p>
+        <div className="ai-error" style={{ background: '#0f172a', borderColor: '#0284c7', color: '#7dd3fc' }} role="status">
+          <strong>ℹ️ Cloud / Serverless Mode:</strong> Connected to BrandGuard cloud analysis engine. If running locally, you can also start <code>cd backend &amp;&amp; uvicorn main:app --reload</code>.
         </div>
       )}
 

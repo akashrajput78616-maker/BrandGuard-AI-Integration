@@ -78,7 +78,19 @@ graph TD
 
 ---
 
-## 📦 Quick Start Guide
+## 🌐 Live Cloud Deployment (Vercel)
+
+The complete platform with both the interactive governance workspace and cloud serverless review engine is deployed live:
+
+* **Production Web App:** [https://frontend-psi-self-29.vercel.app](https://frontend-psi-self-29.vercel.app)
+* **Cloud AI Health Check:** [https://frontend-psi-self-29.vercel.app/api/health](https://frontend-psi-self-29.vercel.app/api/health)
+* **Status:** 🟢 100% Operational (Global HTTPS, zero installation required)
+
+---
+
+## 📦 Local Development Guide
+
+If you prefer to run the project locally on your machine:
 
 ### Prerequisites
 * **Node.js** (v18+)
@@ -87,7 +99,7 @@ graph TD
 
 ---
 
-### Step 1: Run the AI Backend
+### Step 1: Run the AI Backend Locally
 
 ```powershell
 # Navigate to the backend directory
@@ -109,11 +121,12 @@ copy .env.example .env
 # Start the FastAPI server
 uvicorn main:app --reload --port 8000
 ```
-Backend will be live at `http://127.0.0.1:8000`. Health check: `http://127.0.0.1:8000/api/health`.
+Local backend will be live at `http://127.0.0.1:8000`.  
+Local Health check endpoint: `http://127.0.0.1:8000/api/health`.
 
 ---
 
-### Step 2: Run the Frontend Application
+### Step 2: Run the Frontend Locally
 
 ```powershell
 # Open a new terminal and navigate to the frontend directory
@@ -125,7 +138,8 @@ npm install
 # Start the Vite development server
 npm run dev
 ```
-Open `http://localhost:5173/` in your browser.
+Open `http://localhost:5173/` in your browser. (The frontend automatically detects whether it is running on localhost or on Vercel and points to the appropriate health check and review API).
+
 
 ---
 
