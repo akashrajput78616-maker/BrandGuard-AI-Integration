@@ -157,19 +157,110 @@ tests\test_visual_processor.py .....                                     [100%]
 
 ---
 
-## 🌐 Deployment Notes: Vercel vs Dedicated Backend
+## 🌐 Production Deployment Guide (Free-Tier Model)
 
-BrandGuard is architected to run across modern cloud hosting environments:
+BrandGuard is designed for zero-cost production deployment on battle-tested free tiers:
 
-| Component | Vercel (`https://frontend-psi-self-29.vercel.app`) | Dedicated Backend (Render / Fly.io / AWS) |
+```mermaid
+flowchart LR
+    User(["Client Browser"])
+    subgraph Frontend_Vercel ["Frontend: Vercel (Edge CDN)"]
+        VercelApp["https://frontend-psi-self-29.vercel.app"]
+    end
+    subgraph Backend_Render ["Backend: Render Free Web Service"]
+        FastAPI["Uvicorn / FastAPI ASGI<br/>0.0.0.0:$PORT"]
+        WSServer["WebSocket Server<br/>/ws/drafts/{id}"]
+        RAGWorker["Ingestion & Embedding Worker"]
+    end
+    subgraph DB_Cloud ["Database: Neon / Supabase (Free Tier)"]
+        Postgres[("PostgreSQL 16 + pgvector<br/>(Vector Store & Auth)")]
+    end
+    subgraph AI_Cloud ["AI Engine: Google AI Studio"]
+        GeminiFlash["Gemini 2.5 Flash / Embeddings"]
+    end
+
+    User -->|"HTTPS (SPA)"| VercelApp
+    User -->|"HTTPS (REST + Cookies)"| FastAPI
+    User -->|"WSS (Live Collab)"| WSServer
+    FastAPI -->|"SSL Pool"| Postgres
+    FastAPI -->|"API Calls"| GeminiFlash
+```
+
+### 📋 Environment Variables Reference
+
+#### Frontend (`Vercel Project Settings > Environment Variables`)
+
+| Variable | Required | Example Value | Description |
+| :--- | :---: | :--- | :--- |
+| `VITE_API_URL` | **Yes** | `https://brandguard-api.onrender.com` | HTTPS base URL of the deployed Render backend |
+| `VITE_WS_URL` | **Yes** | `wss://brandguard-api.onrender.com` | WSS base URL for persistent real-time WebSockets |
+
+#### Backend (`Render Web Service > Environment`)
+
+| Variable | Required | Example Value | Description |
+| :--- | :---: | :--- | :--- |
+| `PORT` | Auto | `10000` | Port assigned by Render (FastAPI listens on `0.0.0.0:$PORT`) |
+| `DATABASE_URL` | **Yes** | `postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require` | PostgreSQL connection string from Neon or Supabase |
+| `VECTOR_STORE_PROVIDER` | **Yes** | `postgres` | Sets vector store engine (`postgres` or fallback `local`) |
+| `GEMINI_API_KEY` | **Yes** | `AIzaSy...` | Google Gemini API key from Google AI Studio |
+| `GEMINI_API_KEYS` | Optional | `key1,key2,key3` | Comma-separated pool for automatic failover on rate limits |
+| `GEMINI_MODEL` | Default | `gemini-2.5-flash` | Gemini model for grounded reviews and vision audit |
+| `JWT_SECRET` | **Yes** | `32+ character random string` | Secret key used to sign access tokens |
+| `JWT_REFRESH_SECRET` | **Yes** | `32+ character random string` | Secret key used to sign refresh tokens |
+| `SECURE_COOKIES` | **Yes** | `true` | Enables `SameSite=None` and `Secure=True` for cross-site cookies |
+| `FRONTEND_URL` | **Yes** | `https://frontend-psi-self-29.vercel.app` | Vercel domain for strict CORS credentials verification |
+| `FRONTEND_ORIGINS` | Optional | `http://localhost:5173,https://frontend-psi-self-29.vercel.app` | Comma-separated list of permitted CORS origins |
+| `SLACK_WEBHOOK_URL` | Optional | `https://hooks.slack.com/services/...` | Slack Incoming Webhook for approval notifications |
+| `TEAMS_WEBHOOK_URL` | Optional | `https://outlook.office.com/webhook/...` | Microsoft Teams Connector Webhook URL |
+| `GOOGLE_CLIENT_ID` | Optional | `xyz.apps.googleusercontent.com` | Google Cloud OAuth 2.0 Web Client ID |
+| `GOOGLE_CLIENT_SECRET`| Optional | `GOCSPX-...` | Google Cloud OAuth 2.0 Client Secret |
+
+---
+
+### 🚀 Step-by-Step Deployment Order
+
+1. **Database (Neon / Supabase)**:
+   - Create a free PostgreSQL instance.
+   - Run migrations locally to activate `vector` & `uuid-ossp` extensions:
+     ```bash
+     export DATABASE_URL="postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require"
+     npm run migrate
+     ```
+2. **Backend (Render Web Service)**:
+   - Connect GitHub repo: root directory `backend`, runtime `Python 3`.
+   - Build Command: `pip install -r requirements.txt`.
+   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+   - Health Check Path: `/health`.
+   - Add backend environment variables listed above.
+3. **Verify Backend**:
+   - Access `https://<backend>.onrender.com/health` in browser. Expect: `{"status": "ok", "service": "BrandGuard AI Review API", ...}`.
+4. **Frontend (Vercel)**:
+   - In Vercel Project Settings, add `VITE_API_URL` and `VITE_WS_URL`.
+   - Trigger a production Redeploy.
+5. **OAuth Consoles (Google & Microsoft)**:
+   - Add Authorized JavaScript Origins: `https://frontend-psi-self-29.vercel.app` and `http://localhost:5173`.
+   - Add Authorized Redirect URIs: `https://<backend>.onrender.com/api/auth/callback/google` and `http://localhost:8000/api/auth/callback/google`.
+
+---
+
+### ❄️ Render Free-Tier Cold-Start Handling
+
+Render free instances spin down into a sleep state after **15 minutes of inactivity**:
+- **First Request Latency**: Cold start takes **30 to 50 seconds** while the container re-provisions.
+- **Client Auto-Wakeup**: BrandGuard's frontend detects offline WebSocket state and displays a **"⚡ Waking up the server..."** banner while pinging `/health` with exponential backoff (1.5s, 3s, 6s, 12s, capped at 15s) until connection establishes automatically.
+- **Zero Data Loss**: In-memory edits remain safely buffered in the browser until reconnection completes.
+
+---
+
+### 🔧 Troubleshooting & Common Issues
+
+| Issue | Root Cause | Solution |
 | :--- | :--- | :--- |
-| **Frontend SPA** | ✅ Vite static build with global CDN edge caching. | Optional (can serve SPA via static file mount). |
-| **Serverless Review API** | ✅ REST endpoints, health checks, deterministic rules. | ✅ REST endpoints with auto-scaling workers. |
-| **Real-Time WebSockets** | ⚠️ Vercel Serverless terminates after HTTP request. | ✅ Persistent stateful connections (`/ws/drafts/{id}`). |
-| **PostgreSQL & Vector Store**| External DB URL (`DATABASE_URL`). | ✅ Direct persistent connection pool (`asyncpg`). |
-| **Visual Asset Storage** | Ephemeral memory buffer for immediate inspection. | S3 / MinIO object store integration. |
+| **CORS 403 / Credential error** | Modern browsers disallow `Access-Control-Allow-Origin: *` when credentials are included. | In Render env, set `FRONTEND_URL=https://frontend-psi-self-29.vercel.app`. The backend automatically assigns explicit matching origins. |
+| **Login cookies not saving** | Cross-site cookies across different domains (Vercel SPA ↔ Render API) require `SameSite=None; Secure`. | Ensure `SECURE_COOKIES=true` in Render. Access your frontend strictly over `https://`. |
+| **WebSocket `wss://` fails** | Mixed content blocked: Browsers block unencrypted `ws://` on `https://` pages. | Ensure `VITE_WS_URL` starts with `wss://` and points to your Render domain (never `ws://` in production). |
+| **OAuth `redirect_uri_mismatch`** | The redirect URI in Google/Azure console does not match the exact backend hostname. | Verify `https://<backend>.onrender.com/api/auth/callback/google` matches character-for-character without trailing slashes. |
 
-> **Recommendation:** Deploy the React frontend to **Vercel** (`frontend/`) and point `VITE_BACKEND_URL` to a containerized FastAPI service on **Render**, **Fly.io**, or **AWS ECS** (`backend/Dockerfile`).
 
 ---
 
