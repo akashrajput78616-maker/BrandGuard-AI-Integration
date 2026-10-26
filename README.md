@@ -26,48 +26,48 @@ Marketing, product, and communications teams publish across hundreds of touchpoi
 
 ```mermaid
 flowchart TD
-    subgraph Client [Frontend — React 18 + Vite]
-        UI[Review Workspace & Editor]
-        KB[Knowledge Base RAG Uploader]
-        Collab[Real-Time Collaboration Bar]
-        VisStudio[Visual Governance Studio]
+    subgraph Client ["Frontend (React 18 + Vite)"]
+        UI["Review Workspace & Editor"]
+        KB["Knowledge Base RAG Uploader"]
+        Collab["Real-Time Collaboration Bar"]
+        VisStudio["Visual Governance Studio"]
     end
 
-    subgraph Backend [Backend API — FastAPI & Uvicorn]
-        Auth[JWT & RBAC Guards<br/>Admin / Reviewer / Editor / Viewer]
-        WSHub[WebSocket Hub<br/>/ws/drafts/{id}]
-        RAGEngine[RAG Grounded Review Engine]
-        VisionEngine[Multi-Modal Vision Processor]
-        KeyPool[Multi-Key Failover Agent]
+    subgraph Backend ["Backend API (FastAPI & Uvicorn)"]
+        Auth["JWT & RBAC Guards<br/>Admin / Reviewer / Editor / Viewer"]
+        WSHub["WebSocket Hub<br/>/ws/drafts/:draft_id"]
+        RAGEngine["RAG Grounded Review Engine"]
+        VisionEngine["Multi-Modal Vision Processor"]
+        KeyPool["Multi-Key Failover Agent"]
     end
 
-    subgraph Storage [Persistent Storage & Vector Stores]
-        VStore[(Pluggable Vector Store<br/>Local / PgVector / Pinecone)]
-        AuditDB[(Immutable Audit Trail<br/>& Draft State Store)]
+    subgraph Storage ["Persistent Storage & Vector Stores"]
+        VStore[("Pluggable Vector Store<br/>Local / PgVector / Pinecone")]
+        AuditDB[("Immutable Audit Trail<br/>& Draft State Store")]
     end
 
-    subgraph AI [Google Gemini AI Ecosystem]
-        EmbedModel[text-embedding-004]
-        GenModel[Gemini 2.5 / 3.8 Flash]
-        VisionModel[Gemini Vision Multi-Modal]
+    subgraph AI ["Google Gemini AI Ecosystem"]
+        EmbedModel["text-embedding-004"]
+        GenModel["Gemini 2.5 / 3.8 Flash"]
+        VisionModel["Gemini Vision Multi-Modal"]
     end
 
-    KB -->|PDF / DOCX Upload| RAGEngine
-    RAGEngine -->|Chunks| EmbedModel
-    EmbedModel -->|768d Vectors| VStore
+    KB -->|"PDF / DOCX Upload"| RAGEngine
+    RAGEngine -->|"Chunks"| EmbedModel
+    EmbedModel -->|"768d Vectors"| VStore
 
-    UI -->|Review Request| RAGEngine
-    VStore -->|Top-K Context Chunks| RAGEngine
-    RAGEngine -->|Prompt + Grounding| GenModel
-    GenModel -->|Citations & Findings| UI
+    UI -->|"Review Request"| RAGEngine
+    VStore -->|"Top-K Context Chunks"| RAGEngine
+    RAGEngine -->|"Prompt + Grounding"| GenModel
+    GenModel -->|"Citations & Findings"| UI
 
-    UI <-->|Presence & Live Cursors| WSHub
-    WSHub -->|Events| UI
+    UI <-->|"Presence & Live Cursors"| WSHub
+    WSHub -->|"Events"| UI
 
-    VisStudio -->|Image / Banner Upload| VisionEngine
-    VisionEngine -->|CIEDE2000 & WCAG| VisStudio
-    VisionEngine -->|Image Bytes + Prompt| VisionModel
-    VisionModel -->|Bounding Boxes 0..1000| VisStudio
+    VisStudio -->|"Image / Banner Upload"| VisionEngine
+    VisionEngine -->|"CIEDE2000 & WCAG"| VisStudio
+    VisionEngine -->|"Image Bytes + Prompt"| VisionModel
+    VisionModel -->|"Bounding Boxes 0..1000"| VisStudio
 ```
 
 ---
