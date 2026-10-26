@@ -4,7 +4,7 @@ import {
   Radio, Shield, Bell, Settings, CornerDownRight, Plus, RefreshCw, X
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
-import { API_BASE } from './brandguardApi';
+import { API_BASE, getWebSocketUrl } from './brandguardApi';
 
 export default function CollaborativeWorkspace({ draft, onUpdateContent, onStatusChange }) {
   const { user, token, isReviewer, isEditor, isViewer } = useAuth();
@@ -21,57 +21,132 @@ export default function CollaborativeWorkspace({ draft, onUpdateContent, onStatu
   const [newWebhookPlatform, setNewWebhookPlatform] = useState('slack');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
+  const [serverWakingUp, setServerWakingUp] = useState(false);
   const wsRef = useRef(null);
   const editorRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const healthPingIntervalRef = useRef(null);
+  const reconnectAttemptRef = useRef(0);
 
   const draftId = draft?.id || 'draft-1';
 
-  // 1. Establish real-time WebSocket connection
+  // 1. Establish real-time WebSocket connection with exponential backoff & cold-start wake-up
   useEffect(() => {
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = isLocal ? '127.0.0.1:8000' : window.location.host;
-    const wsUrl = `${wsProto}//${wsHost}/ws/drafts/${draftId}?token=${token || ''}`;
+    let isMounted = true;
 
-    let ws;
-    try {
-      ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        setWsConnected(true);
-      };
-
-      ws.onmessage = (event) => {
+    const triggerHealthPing = () => {
+      if (healthPingIntervalRef.current) return;
+      const ping = async () => {
         try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'presence') {
-            setCollaborators(msg.users || []);
-          } else if (msg.type === 'content_change') {
-            if (msg.content && msg.content !== draft.content) {
-              onUpdateContent(msg.content);
+          const res = await fetch(`${API_BASE}/health`, { credentials: 'include' });
+          if (res.ok && isMounted) {
+            setServerWakingUp(false);
+            if (healthPingIntervalRef.current) {
+              clearInterval(healthPingIntervalRef.current);
+              healthPingIntervalRef.current = null;
             }
-          } else if (msg.type === 'status_change') {
-            if (msg.status && onStatusChange) {
-              onStatusChange(msg.status);
-            }
-          } else if (msg.type === 'comment_event') {
-            loadComments();
           }
-        } catch (e) {
-          console.warn('WS message parse error:', e);
+        } catch (_) {
+          // Container still spinning up
         }
       };
+      ping();
+      healthPingIntervalRef.current = setInterval(ping, 5000);
+    };
 
-      ws.onclose = () => {
-        setWsConnected(false);
-      };
-    } catch (e) {
-      console.warn('WebSocket connection error:', e);
-    }
+    const connectWebSocket = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      const path = `/ws/drafts/${draftId}?token=${encodeURIComponent(token || '')}`;
+      const wsUrl = getWebSocketUrl(path);
+
+      try {
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        // If connection takes > 3.5s, backend is likely cold-starting on Render free tier
+        const coldStartTimer = setTimeout(() => {
+          if (isMounted && ws.readyState !== WebSocket.OPEN) {
+            setServerWakingUp(true);
+            triggerHealthPing();
+          }
+        }, 3500);
+
+        ws.onopen = () => {
+          clearTimeout(coldStartTimer);
+          if (!isMounted) return;
+          setWsConnected(true);
+          setServerWakingUp(false);
+          reconnectAttemptRef.current = 0;
+          if (healthPingIntervalRef.current) {
+            clearInterval(healthPingIntervalRef.current);
+            healthPingIntervalRef.current = null;
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'presence') {
+              setCollaborators(msg.users || []);
+            } else if (msg.type === 'content_change') {
+              if (msg.content && msg.content !== draft?.content) {
+                onUpdateContent(msg.content);
+              }
+            } else if (msg.type === 'status_change') {
+              if (msg.status && onStatusChange) {
+                onStatusChange(msg.status);
+              }
+            } else if (msg.type === 'comment_event') {
+              loadComments();
+            }
+          } catch (e) {
+            console.warn('WS message parse error:', e);
+          }
+        };
+
+        ws.onerror = () => {
+          if (isMounted && reconnectAttemptRef.current > 0) {
+            setServerWakingUp(true);
+            triggerHealthPing();
+          }
+        };
+
+        ws.onclose = () => {
+          clearTimeout(coldStartTimer);
+          if (!isMounted) return;
+          setWsConnected(false);
+
+          // Exponential backoff: 1.5s, 3s, 6s, 12s, capped at 15s
+          reconnectAttemptRef.current += 1;
+          const delay = Math.min(1500 * Math.pow(2, reconnectAttemptRef.current - 1), 15000);
+          if (reconnectAttemptRef.current >= 2) {
+            setServerWakingUp(true);
+            triggerHealthPing();
+          }
+
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (isMounted) connectWebSocket();
+          }, delay);
+        };
+      } catch (e) {
+        console.warn('WebSocket connection error:', e);
+        if (isMounted) {
+          reconnectTimeoutRef.current = setTimeout(connectWebSocket, 4000);
+        }
+      }
+    };
+
+    connectWebSocket();
 
     return () => {
-      if (ws) ws.close();
+      isMounted = false;
+      if (wsRef.current) wsRef.current.close();
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (healthPingIntervalRef.current) clearInterval(healthPingIntervalRef.current);
     };
   }, [draftId, token]);
 
@@ -245,6 +320,29 @@ export default function CollaborativeWorkspace({ draft, onUpdateContent, onStatu
 
   return (
     <div className="collaborative-workspace-container">
+      {serverWakingUp && (
+        <div
+          className="server-wakeup-banner"
+          style={{
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#1e40af',
+            fontSize: '0.85rem',
+            lineHeight: 1.4,
+          }}
+        >
+          <RefreshCw size={15} className="spin-icon" style={{ flexShrink: 0, color: '#2563eb' }} />
+          <div>
+            <strong>Waking up backend server...</strong> Render free tier spins down after inactivity (~30–50s cold start). Reconnecting automatically in background.
+          </div>
+        </div>
+      )}
       {/* ── Real-time Top Bar (Presence & Approval Queues) ── */}
       <div className="collab-top-bar">
         {/* Presence Indicators */}

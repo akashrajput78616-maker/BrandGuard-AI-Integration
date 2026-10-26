@@ -1,0 +1,22 @@
+{
+  "name": "brandguard-monorepo",
+  "version": "3.0.0",
+  "description": "BrandGuard AI Intelligent Brand Governance Platform",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "migrate": "python backend/migrate.py",
+    "test": "cd backend && pytest"
+  },
+  "keywords": [
+    "brand-governance",
+    "rag",
+    "gemini",
+    "pgvector",
+    "fastapi",
+    "react"
+  ],
+  "author": "Akash Rajput",
+  "license": "MIT"
+}

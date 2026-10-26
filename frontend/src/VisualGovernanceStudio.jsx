@@ -18,8 +18,7 @@ import {
   FileImage
 } from 'lucide-react';
 import './vision.css';
-
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+import { API_BASE } from './brandguardApi';
 
 // Sample Presets for instantaneous 1-click testing
 const PRESETS = [

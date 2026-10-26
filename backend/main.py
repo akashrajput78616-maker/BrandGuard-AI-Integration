@@ -237,18 +237,35 @@ app = FastAPI(
     description="Intelligent Brand Governance Platform with RAG, Multi-Modal Vision, and Enterprise Collaboration",
 )
 
-origins = [
+# Permitted CORS origins
+raw_origins = [
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://frontend-psi-self-29.vercel.app",
     ).split(",")
     if origin.strip()
 ]
 
+frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if frontend_url and frontend_url not in raw_origins:
+    raw_origins.append(frontend_url)
+
+if "https://frontend-psi-self-29.vercel.app" not in raw_origins:
+    raw_origins.append("https://frontend-psi-self-29.vercel.app")
+
+# Disallow wildcard "*" when credentials are true, as browsers reject it
+origins = [o for o in raw_origins if o != "*"]
+
+# Cookie security settings (httpOnly, Secure, SameSite=None for cross-site Vercel <-> Render)
+SECURE_COOKIES = os.getenv("SECURE_COOKIES", "true").lower() in ("true", "1", "yes")
+COOKIE_SAMESITE: Literal["none", "lax"] = "none" if SECURE_COOKIES else "lax"
+COOKIE_SECURE: bool = SECURE_COOKIES
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if "*" in origins else origins,
+    allow_origins=origins,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -285,7 +302,7 @@ class ReviewResponse(BaseModel):
 
 
 # --------------------------------------------------
-# Health check
+# Health check endpoints
 # --------------------------------------------------
 
 @app.get("/")
@@ -294,6 +311,18 @@ def home():
         "message": "BrandGuard AI API (Round 3) is running",
         "docs": "/docs",
         "version": "3.0",
+        "health": "/health",
+    }
+
+
+@app.get("/health")
+def root_health():
+    """Lightweight root health check endpoint for Render and monitoring probes."""
+    return {
+        "status": "ok",
+        "service": APP_NAME,
+        "version": "3.0",
+        "model": MODEL,
     }
 
 
@@ -527,20 +556,22 @@ def login(request: LoginRequest, response: Response):
     access_token = create_access_token(user)
     refresh_token = create_refresh_token(user)
 
-    # Set httpOnly cookies
+    # Set httpOnly cookies (SameSite=None, Secure for cross-origin Vercel <-> Render)
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=3600,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         max_age=7 * 86400,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
     )
 
     audit_store.log(
@@ -581,7 +612,8 @@ def refresh_token(
         value=new_access_token,
         httponly=True,
         max_age=3600,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
     )
     return TokenResponse(access_token=new_access_token, expires_in=3600, user=user)
 
@@ -589,8 +621,8 @@ def refresh_token(
 @app.post("/api/auth/logout")
 def logout(response: Response, current_user: AuthenticatedUser = Depends(get_current_user)):
     """Logs out user and clears session cookies."""
-    response.delete_cookie(key="access_token")
-    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(key="access_token", samesite=COOKIE_SAMESITE, secure=COOKIE_SECURE)
+    response.delete_cookie(key="refresh_token", samesite=COOKIE_SAMESITE, secure=COOKIE_SECURE)
     audit_store.log(
         tenant_id=current_user.tenant_id,
         user_id=current_user.user_id,
@@ -625,7 +657,8 @@ def switch_role(
         value=new_token,
         httponly=True,
         max_age=3600,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
     )
     audit_store.log(
         tenant_id=current_user.tenant_id,
@@ -1167,4 +1200,9 @@ async def audit_visual_upload(
     return report
 
 
-
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    logger.info(f"Starting {APP_NAME} on {host}:{port}")
+    uvicorn.run("main:app", host=host, port=port, reload=False)
