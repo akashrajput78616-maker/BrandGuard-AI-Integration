@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import threading
-from typing import Literal
+from typing import Literal, Optional
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -530,6 +530,16 @@ class WebhookCreateRequest(BaseModel):
     platform: str  # 'slack' or 'teams'
     url: str
     events: Optional[list[str]] = None
+
+
+LoginRequest.model_rebuild()
+SwitchRoleRequest.model_rebuild()
+DraftCreateRequest.model_rebuild()
+DraftUpdateRequest.model_rebuild()
+DraftTransitionRequest.model_rebuild()
+CommentCreateRequest.model_rebuild()
+CommentReplyRequest.model_rebuild()
+WebhookCreateRequest.model_rebuild()
 
 
 @app.post("/api/auth/login", response_model=TokenResponse)

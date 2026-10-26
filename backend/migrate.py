@@ -13,15 +13,24 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load backend/.env if available
+# Configure UTF-8 stdout if possible on Windows
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+# Load backend/.env and root .env.local if available
 backend_dir = Path(__file__).resolve().parent
+project_root = backend_dir.parent
+load_dotenv(project_root / ".env.local")
 load_dotenv(backend_dir / ".env")
 
 
 def run_migrations():
-    db_url = os.getenv("DATABASE_URL", "").strip()
+    db_url = os.getenv("DATABASE_URL_UNPOOLED", "").strip() or os.getenv("DATABASE_URL", "").strip()
     if not db_url:
-        print("\n❌ Error: DATABASE_URL environment variable is not set.")
+        print("\n[ERROR] DATABASE_URL environment variable is not set.")
         print("Please provide a valid PostgreSQL connection string (from Neon or Supabase):")
         print("Example: DATABASE_URL=postgresql://user:password@ep-xyz.neon.tech/neondb?sslmode=require\n")
         sys.exit(1)
@@ -30,7 +39,7 @@ def run_migrations():
     if db_url.startswith("postgres://"):
         db_url = "postgresql://" + db_url[len("postgres://"):]
 
-    print(f"Connecting to database...")
+    print("Connecting to database...")
 
     try:
         import psycopg2
