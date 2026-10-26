@@ -1,163 +1,205 @@
 # BrandGuard — Intelligent Brand Governance Platform
 
-[![Inkloom AI Hackathon](https://img.shields.io/badge/Hackathon-Inkloom%20Round%202-0fa3a3?style=for-the-badge)](https://github.com/akashrajput78616-maker/BrandGuard-AI-Integration)
+[![Inkloom AI Hackathon](https://img.shields.io/badge/Hackathon-Inkloom%20Round%203%20Complete-0fa3a3?style=for-the-badge)](https://github.com/akashrajput78616-maker/BrandGuard-AI-Integration)
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%205-61dafb?style=for-the-badge&logo=react)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Google Gemini](https://img.shields.io/badge/AI%20Engine-Gemini%203.8%20Flash-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev/)
+[![Google Gemini](https://img.shields.io/badge/AI%20Engine-Gemini%202.5%20%2F%203.8%20Flash-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev/)
+[![Tests](https://img.shields.io/badge/Tests-23%20Passing-brightgreen?style=for-the-badge)](https://github.com/akashrajput78616-maker/BrandGuard-AI-Integration)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://frontend-psi-self-29.vercel.app)
 
-> **Catch off-brand tone, wrong facts, unsupported claims, and accessibility violations before publication — with source citations, intent-preserving fixes, and mandatory human-in-the-loop oversight.**
+> **Catch off-brand tone, outdated facts, unsupported claims, unapproved visual assets, and accessibility violations before publication — with grounded RAG source citations, real-time collaboration, CIEDE2000 color delta math, and mandatory human-in-the-loop oversight.**
 
 ---
 
 ## 📌 Project Overview
 
-Marketing teams publish thousands of messages across campaigns, social media, and product launches. Without automated governance, unsupported superlatives, exaggerated promises, off-brand tone, and outdated facts slip through — creating significant brand damage and legal liability.
+Marketing, product, and communications teams publish across hundreds of touchpoints daily. Without automated governance, unsupported superlatives, unapproved color variants, distorted logos, and non-compliant claims slip through — risking brand equity and regulatory exposure.
 
-**BrandGuard** solves this by combining a fast client-side **deterministic policy engine** with **Google Gemini 3.8 Flash** AI review. It flags questionable phrasing, cites the exact approved brand guideline, provides confidence scores, suggests intent-preserving edits, and enforces an authorized human approval gate before publication.
+**BrandGuard** solves this by unifying:
+1. **RAG-Powered Document Ingestion & Grounded Retrieval** (PDF/DOCX guideline vectorization, strict quote citation, or abstention).
+2. **Enterprise Collaboration & RBAC Governance** (real-time WebSocket presence, text-anchored threaded inline comments, role-based approval queues, Slack/Teams webhooks).
+3. **Multi-Modal Visual Governance Studio** (CIEDE2000 $\Delta E_{00}$ color distance, k-means palette clustering, WCAG 2.1 contrast checks, and Gemini Vision logo integrity inspection with interactive bounding boxes).
 
 ---
 
-## 🚀 Working Core Workflow (6 Stages)
+## 🚀 Complete System Architecture
 
 ```mermaid
-graph TD
-    A[1. Brand Knowledge Base] -->|Approved Rules & Facts| C[3. Deterministic Rules Engine]
-    B[2. Submit Creative Draft] --> C
-    B -->|Content Stream| D[4. Gemini 3.8 Flash AI Review]
-    C -->|Rule Violations & Severity| E[5. Human Decision Gate]
-    D -->|Contextual Reasoning & Citations| E
-    E -->|Accept / Edit / Dismiss| F[6. Approval, Audit Log & PDF Report]
+flowchart TD
+    subgraph Client [Frontend — React 18 + Vite]
+        UI[Review Workspace & Editor]
+        KB[Knowledge Base RAG Uploader]
+        Collab[Real-Time Collaboration Bar]
+        VisStudio[Visual Governance Studio]
+    end
+
+    subgraph Backend [Backend API — FastAPI & Uvicorn]
+        Auth[JWT & RBAC Guards<br/>Admin / Reviewer / Editor / Viewer]
+        WSHub[WebSocket Hub<br/>/ws/drafts/{id}]
+        RAGEngine[RAG Grounded Review Engine]
+        VisionEngine[Multi-Modal Vision Processor]
+        KeyPool[Multi-Key Failover Agent]
+    end
+
+    subgraph Storage [Persistent Storage & Vector Stores]
+        VStore[(Pluggable Vector Store<br/>Local / PgVector / Pinecone)]
+        AuditDB[(Immutable Audit Trail<br/>& Draft State Store)]
+    end
+
+    subgraph AI [Google Gemini AI Ecosystem]
+        EmbedModel[text-embedding-004]
+        GenModel[Gemini 2.5 / 3.8 Flash]
+        VisionModel[Gemini Vision Multi-Modal]
+    end
+
+    KB -->|PDF / DOCX Upload| RAGEngine
+    RAGEngine -->|Chunks| EmbedModel
+    EmbedModel -->|768d Vectors| VStore
+
+    UI -->|Review Request| RAGEngine
+    VStore -->|Top-K Context Chunks| RAGEngine
+    RAGEngine -->|Prompt + Grounding| GenModel
+    GenModel -->|Citations & Findings| UI
+
+    UI <-->|Presence & Live Cursors| WSHub
+    WSHub -->|Events| UI
+
+    VisStudio -->|Image / Banner Upload| VisionEngine
+    VisionEngine -->|CIEDE2000 & WCAG| VisStudio
+    VisionEngine -->|Image Bytes + Prompt| VisionModel
+    VisionModel -->|Bounding Boxes 0..1000| VisStudio
 ```
 
-1. **Build Knowledge Base:** Add approved brand rules, terminology guides, color swatches, and verified claims.
-2. **Submit Content:** Paste copy, upload markdown/text drafts, or submit visual assets with alt-text.
-3. **Deterministic Review:** Client-side rule matching detects known non-preferred terms and banned superlatives instantly.
-4. **Gemini AI Analysis:** Google Gemini 3.8 Flash analyzes content contextually using strict JSON schemas.
-5. **Human Decision Gate:** Reviewers accept intent-preserving suggestions, edit replacements, or dismiss with logged reasons.
-6. **Approval & Audit Trail:** Authorized roles approve drafts, record timestamped decisions, and export compliance PDF reports.
+---
+
+## ✨ Round 3 Completed Features
+
+### Feature 1: RAG-Powered Knowledge Base & Document Ingestion
+* **Document Ingestion:** Drag-and-drop ingestion of enterprise brand guideline documents in **PDF** (`pypdf`) and **DOCX** (`python-docx`).
+* **Sliding Window Chunker (`chunker.py`):** Configurable 500-800 token sliding windows with 100-token overlap, preserving heading hierarchies, section breadcrumbs, and page numbers.
+* **Gemini Embedding Engine (`embedder.py`):** Batched embedding generation via `text-embedding-004` with deterministic fallback.
+* **Pluggable Vector Store (`vector_store.py`):** Abstract `VectorStore` base class with:
+  * `LocalVectorStore`: In-memory vector search with JSON snapshot persistence (zero infrastructure required).
+  * `PgVectorStore`: Enterprise PostgreSQL vector store leveraging `pgvector` and HNSW indexes (`vector_cosine_ops`).
+  * `PineconeVectorStore`: Managed cloud vector store adapter.
+* **Grounded Review Engine (`review_engine.py`):** Contextual top-k retrieval injecting guidelines into Gemini prompts. Enforces **strict source attribution** (source document, section, and exact quoted snippet) or explicit abstention when no policy is matched.
+* **Frontend Knowledge Base (`KnowledgeBaseRAG.jsx`):** Document list, upload progress, parsing status badges (`PENDING`, `PARSING`, `EMBEDDING`, `INDEXED`, `FAILED`), chunk inspector drawer, and live semantic search sandbox.
+
+### Feature 2: Multi-User Collaboration & Enterprise Authentication
+* **Enterprise Authentication (`auth/`):**
+  * HTTP-only cookies with JWT access & refresh tokens.
+  * Role-Based Access Control (**Admin**, **Reviewer**, **Editor**, **Viewer**).
+  * Password hashing via PBKDF2 with SHA-256 and unique salt per user.
+* **Real-Time WebSocket Hub (`collab/ws_hub.py`):**
+  * Room manager `/ws/drafts/{draft_id}` with live user presence avatars and real-time cursor broadcast.
+  * Synchronized collaborative draft editing across connected browsers.
+* **Threaded Inline Comments (`collab/comments.py`):**
+  * Text-range anchored comments (`start_offset`, `end_offset`, `selected_text`).
+  * Reply threads, resolve/unresolve state toggles, and WebSocket broadcast.
+* **Approval Workflow State Machine (`collab/approvals.py`):**
+  * Enforced lifecycle: `Draft` → `In Review` → `Approved` / `Changes Requested`.
+  * Server-side authorization check (Editors cannot approve; only Reviewers/Admins).
+* **Enterprise Webhook Notifications (`collab/webhooks.py`):**
+  * Outgoing webhook dispatcher for **Slack** and **Microsoft Teams**.
+  * Dispatches on `review_requested`, `decision_approved`, `decision_rejected`, and `comment_added` with exponential backoff retry.
+* **Chronological Audit Trail (`collab/audit.py`):**
+  * Tenant-isolated, immutable log recording timestamp, actor, role, action, and change details.
+
+### Feature 3: Visual & Multi-Modal Brand Governance Studio
+* **Perceptual Color Science (`vision/delta_e.py`):**
+  * Exact **CIEDE2000 ($\Delta E_{00}$)** color difference engine according to ISO/CIE 11664-6:2014.
+  * sRGB $\to$ CIE XYZ (D65 illuminant, 2° observer) $\to$ CIE $L^*a^*b^*$ transformations.
+  * Tolerances: $\Delta E < 2.0$ (Pass/Imperceptible), $2.0 \le \Delta E \le 5.0$ (Acceptable brand variation), $\Delta E > 5.0$ (Off-brand violation).
+* **Dominant Color Extraction (`vision/palette.py`):**
+  * K-means clustering (`MiniBatchKMeans` / Pillow) extracting top 5 dominant colors and pixel presence percentages.
+  * Pairwise matching against approved brand palette.
+* **WCAG 2.1 Contrast Engine (`vision/contrast.py`):**
+  * Relative luminance formula $L = 0.2126 R_{lin} + 0.7152 G_{lin} + 0.0722 B_{lin}$.
+  * Contrast ratio $(L_1 + 0.05) / (L_2 + 0.05)$.
+  * Level AA (4.5:1 normal, 3:1 large) and Level AAA (7:1 normal, 4.5:1 large) evaluation with actionable contrast increase suggestions.
+* **Gemini Vision Inspection (`vision/gemini_vision.py`):**
+  * Multi-modal visual asset review detecting unapproved logo variations (aspect ratio distortion, unauthorized coloring, clear-space margin intrusion, blurriness).
+  * Returns normalized bounding boxes `[ymin, xmin, ymax, xmax]` on a 0–1000 scale.
+* **Interactive Visual Studio UI (`VisualGovernanceStudio.jsx`):**
+  * Drag-and-drop asset uploader + 1-click test presets (Approved Banner vs Stretched Logo Violation).
+  * Interactive canvas with hoverable/clickable SVG bounding-box overlays.
+  * Color swatch list with live $\Delta E$ pills and percentage frequency bars.
+  * WCAG AA/AAA compliance cards with live text simulation.
+  * Interactive Color Sandbox for ad-hoc hex code evaluation.
+  * Human-in-the-loop sign-off banner.
 
 ---
 
-## ✨ 12 Completed Features
+## 🧪 Automated Test Suite (23 Tests)
 
-| # | Feature | Category | Description |
-| :--- | :--- | :--- | :--- |
-| **01** | **Review Workspace** | Core Governance | Full editor with inline flagged phrases, severity tags (High/Medium), confidence scores, and comment threads. |
-| **02** | **Brand Knowledge Base** | Truth Source | Searchable repository of brand rules, approved claims, terminology standards, color swatches, and TXT policy import. |
-| **03** | **Insights Dashboard** | Analytics | Interactive Recharts visualizations of issue frequencies, draft pipeline stages, and policy clarity recommendations. |
-| **04** | **Chronological Audit Log** | Accountability | Immutable record of every review action, human edit, approval decision, role attribution, and timestamp. |
-| **05** | **AI Transparency Panel** | Responsible AI | Full disclosure of review engine mechanics, local privacy boundaries, and confirmation that no auto-publishing occurs. |
-| **06** | **Role-Based Access Control** | Governance | Four distinct roles (**Creator**, **Reviewer**, **Manager**, **Admin**) with permission-gated approval actions. |
-| **07** | **Gemini AI Review Engine** | Intelligence | FastAPI backend integrated with **Google Gemini 3.8 Flash** for deep contextual review with structured JSON schema. |
-| **08** | **PDF Report Export** | Reporting | Client-side jsPDF generator producing comprehensive audit-ready compliance reports for reviewed content. |
-| **09** | **Dark Mode & Responsive UI** | Usability | Accessible high-contrast dark/light theme switching with adaptive layouts across mobile and desktop. |
-| **10** | **Marketing Landing Page** | Presentation | Conversion-ready homepage showcasing core value propositions, capability diffs (Before/After), and live interactive mockups. |
-| **11** | **Dual Review Engine Architecture** | Reliability | Decoupled client-side deterministic rules engine and server-side Gemini AI review for 100% offline uptime and deep analysis. |
-| **12** | **Privacy & Masking Controls** | Security | Sensitive content masking toggle, local demo isolation, and environment-protected API credentials in `.env`. |
+The backend features a comprehensive test suite covering all modules:
 
----
+```powershell
+cd backend
+.\.venv\Scripts\activate
+pytest
+```
 
-## 🛠️ Technology Stack & Architecture
+**Results:**
+```
+============================= test session starts =============================
+collected 23 items
 
-### Frontend (`/frontend`)
-* **React 18** — High-performance component architecture
-* **Vite 5** — Lightning-fast development & optimized production build
-* **Framer Motion** — Fluid micro-animations and layout transitions
-* **Recharts** — Responsive SVG charting for analytics
-* **Lucide React** — Modern, clean iconography
-* **jsPDF** — Dynamic client-side report and presentation generation
+tests\test_auth_guards.py ....                                           [ 17%]
+tests\test_chunker.py ....                                               [ 34%]
+tests\test_contrast.py ...                                               [ 47%]
+tests\test_delta_e.py ....                                               [ 65%]
+tests\test_rag_retrieval.py ...                                          [ 78%]
+tests\test_visual_processor.py .....                                     [100%]
 
-### Backend (`/backend`)
-* **FastAPI** — Modern asynchronous Python API framework
-* **Pydantic v2** — Strict request/response schema validation
-* **Uvicorn** — Production-ready ASGI server
-* **Google GenAI SDK** — Official client for Gemini 3.8 Flash
-* **python-dotenv** — Secure environment variable management
-* **CORS Middleware** — Secure origin binding
+======================= 23 passed, 3 warnings in 4.98s ========================
+```
 
 ---
 
-## 🌐 Live Cloud Deployment (Vercel)
+## 🌐 Deployment Notes: Vercel vs Dedicated Backend
 
-The complete platform with both the interactive governance workspace and cloud serverless review engine is deployed live:
+BrandGuard is architected to run across modern cloud hosting environments:
 
-* **Production Web App:** [https://frontend-psi-self-29.vercel.app](https://frontend-psi-self-29.vercel.app)
-* **Cloud AI Health Check:** [https://frontend-psi-self-29.vercel.app/api/health](https://frontend-psi-self-29.vercel.app/api/health)
-* **Status:** 🟢 100% Operational (Global HTTPS, zero installation required)
+| Component | Vercel (`https://frontend-psi-self-29.vercel.app`) | Dedicated Backend (Render / Fly.io / AWS) |
+| :--- | :--- | :--- |
+| **Frontend SPA** | ✅ Vite static build with global CDN edge caching. | Optional (can serve SPA via static file mount). |
+| **Serverless Review API** | ✅ REST endpoints, health checks, deterministic rules. | ✅ REST endpoints with auto-scaling workers. |
+| **Real-Time WebSockets** | ⚠️ Vercel Serverless terminates after HTTP request. | ✅ Persistent stateful connections (`/ws/drafts/{id}`). |
+| **PostgreSQL & Vector Store**| External DB URL (`DATABASE_URL`). | ✅ Direct persistent connection pool (`asyncpg`). |
+| **Visual Asset Storage** | Ephemeral memory buffer for immediate inspection. | S3 / MinIO object store integration. |
+
+> **Recommendation:** Deploy the React frontend to **Vercel** (`frontend/`) and point `VITE_BACKEND_URL` to a containerized FastAPI service on **Render**, **Fly.io**, or **AWS ECS** (`backend/Dockerfile`).
 
 ---
 
 ## 📦 Local Development Guide
 
-If you prefer to run the project locally on your machine:
-
-### Prerequisites
-* **Node.js** (v18+)
-* **Python** (3.10+)
-* A **Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/))
-
----
-
-### Step 1: Run the AI Backend Locally
+### 1. Backend Setup
 
 ```powershell
-# Navigate to the backend directory
 cd backend
-
-# Create and activate virtual environment
 python -m venv .venv
 .\.venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure your API key
 copy .env.example .env
-# Edit .env and set:
-# GEMINI_API_KEY=your_gemini_api_key
-# GEMINI_MODEL=gemini-3.8-flash
-
-# Start the FastAPI server
+# Configure your GEMINI_API_KEY in .env
 uvicorn main:app --reload --port 8000
 ```
-Local backend will be live at `http://127.0.0.1:8000`.  
-Local Health check endpoint: `http://127.0.0.1:8000/api/health`.
 
----
-
-### Step 2: Run the Frontend Locally
+### 2. Frontend Setup
 
 ```powershell
-# Open a new terminal and navigate to the frontend directory
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the Vite development server
 npm run dev
 ```
-Open `http://localhost:5173/` in your browser. (The frontend automatically detects whether it is running on localhost or on Vercel and points to the appropriate health check and review API).
 
-
----
-
-## 🎯 Round 3 Roadmap (Three Major Improvements)
-
-1. **RAG-Powered Knowledge Base & Document Ingestion:**
-   * Transition from static rules to a Retrieval-Augmented Generation (RAG) vector pipeline.
-   * Users upload PDF/DOCX policy guidelines; system chunks and embeds them using **Gemini Embeddings** into a vector database (pgvector/Pinecone) for contextual retrieval across hundreds of enterprise pages.
-2. **Multi-User Collaboration & Enterprise Authentication:**
-   * Implement OAuth 2.0 / JWT authentication with multi-tenant PostgreSQL.
-   * Add real-time WebSocket communication for collaborative draft co-editing, threaded inline review comments, role-based approval queues, and Slack/Teams webhook notifications.
-3. **Visual & Multi-Modal Brand Governance:**
-   * Leverage **Gemini Vision** multi-modal capabilities to audit image assets, slide decks, and banner graphics.
-   * Automatically detect unapproved logo variations, extract brand color palettes to verify hex code tolerances, and compute WCAG text-over-image contrast ratios.
+Visit `http://localhost:5173` to access the full BrandGuard platform.
 
 ---
 
 ## 📄 License & Attribution
 
-Built with ❤️ by **Akash Rajput** for the **Inkloom AI Hackathon 2026**.
-All code is open source under the [MIT License](LICENSE).
+Built with ❤️ by **Akash Rajput** for the **Inkloom AI Hackathon 2026**.  
+Licensed under the [MIT License](LICENSE).
