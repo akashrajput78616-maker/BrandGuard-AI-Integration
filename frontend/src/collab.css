@@ -1,0 +1,445 @@
+/* BrandGuard Multi-User Real-time Collaboration Styles */
+
+.collab-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.app.dark .collab-top-bar {
+  background: #111827;
+  border-color: #1f2937;
+}
+
+.presence-avatars-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.presence-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.presence-stack {
+  display: flex;
+  align-items: center;
+}
+
+.collab-avatar-pill {
+  position: relative;
+  display: inline-block;
+  margin-left: -8px;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.collab-avatar-pill:first-child {
+  margin-left: 0;
+}
+
+.collab-avatar-pill:hover {
+  transform: translateY(-3px) scale(1.1);
+  z-index: 10;
+}
+
+.avatar-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  background-size: cover;
+  background-position: center;
+}
+
+.app.dark .avatar-circle {
+  border-color: #111827;
+}
+
+.online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 1.5px solid #ffffff;
+}
+
+.app.dark .online-dot {
+  border-color: #111827;
+}
+
+/* Approval Queue Workflow Bar */
+.workflow-queue-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.queue-badge.draft {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.app.dark .queue-badge.draft {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+.queue-badge.in-review {
+  background: rgba(232, 150, 46, 0.12);
+  color: #e8962e;
+  border: 1px solid rgba(232, 150, 46, 0.3);
+}
+
+.queue-badge.approved {
+  background: rgba(46, 158, 107, 0.12);
+  color: #2e9e6b;
+  border: 1px solid rgba(46, 158, 107, 0.3);
+}
+
+.queue-badge.rejected {
+  background: rgba(214, 69, 69, 0.12);
+  color: #d64545;
+  border: 1px solid rgba(214, 69, 69, 0.3);
+}
+
+.queue-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Collaborative Editor with Live Highlights & Cursors */
+.collab-editor-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.floating-cursor-indicator {
+  position: absolute;
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #ffffff;
+  transform: translateY(-20px);
+  z-index: 5;
+  white-space: nowrap;
+  animation: fadeIn 0.2s ease;
+}
+
+.comment-highlight {
+  background: rgba(15, 163, 163, 0.18);
+  border-bottom: 2px solid #0fa3a3;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.comment-highlight.resolved {
+  background: rgba(100, 116, 139, 0.12);
+  border-bottom: 1px dashed #94a3b8;
+}
+
+/* Floating add-comment button on selection */
+.floating-comment-btn {
+  position: absolute;
+  z-index: 20;
+  background: #0fa3a3;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(15, 163, 163, 0.3);
+  cursor: pointer;
+  transform: translateY(-36px);
+  transition: transform 0.15s ease;
+}
+
+.floating-comment-btn:hover {
+  transform: translateY(-38px) scale(1.05);
+  background: #0c8c8c;
+}
+
+/* Threaded Comments Panel */
+.comments-panel-wrap {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app.dark .comments-panel-wrap {
+  background: #111827;
+  border-color: #1f2937;
+}
+
+.comments-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comments-filter-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.app.dark .comments-filter-tabs {
+  background: #1e293b;
+}
+
+.filter-tab {
+  border: none;
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.filter-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.app.dark .filter-tab.active {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.threaded-comment-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.app.dark .threaded-comment-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.threaded-comment-card.resolved {
+  opacity: 0.7;
+}
+
+.threaded-comment-card:hover {
+  border-color: #0fa3a3;
+}
+
+.comment-author-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.author-role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(15, 163, 163, 0.1);
+  color: #0fa3a3;
+}
+
+.comment-quoted-text {
+  border-left: 2px solid #0fa3a3;
+  padding-left: 8px;
+  font-size: 12px;
+  font-style: italic;
+  color: #64748b;
+  margin: 0;
+}
+
+.comment-body-text {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.app.dark .comment-body-text {
+  color: #cbd5e1;
+}
+
+.comment-replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 12px;
+  padding-left: 10px;
+  border-left: 1px solid #cbd5e1;
+}
+
+.app.dark .comment-replies-list {
+  border-color: #334155;
+}
+
+.reply-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.app.dark .reply-card {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.reply-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.reply-input-row input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #ffffff;
+}
+
+.app.dark .reply-input-row input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.comment-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #64748b;
+  padding-top: 6px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.app.dark .comment-actions-bar {
+  border-color: #334155;
+}
+
+.resolve-btn {
+  background: none;
+  border: none;
+  color: #0fa3a3;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.resolve-btn:hover {
+  text-decoration: underline;
+}
+
+/* Webhooks Modal */
+.webhook-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app.dark .webhook-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.webhook-platform-pill {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.webhook-platform-pill.slack {
+  background: rgba(74, 21, 75, 0.15);
+  color: #4a154b;
+}
+
+.app.dark .webhook-platform-pill.slack {
+  background: rgba(224, 30, 90, 0.2);
+  color: #e01e5a;
+}
+
+.webhook-platform-pill.teams {
+  background: rgba(98, 100, 167, 0.15);
+  color: #6264a7;
+}
+
+.app.dark .webhook-platform-pill.teams {
+  background: rgba(123, 136, 219, 0.2);
+  color: #9ea8eb;
+}

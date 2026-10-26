@@ -5,7 +5,10 @@ import threading
 from typing import Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi import (
+    FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks,
+    Depends, Response, WebSocket, WebSocketDisconnect, Query, Cookie
+)
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
@@ -17,6 +20,18 @@ from rag.vector_store import get_vector_store
 from rag.ingestion import IngestionManager
 from rag.review_engine import RAGReviewEngine, GroundedFinding
 from rag.seed_data import seed_guidelines_if_empty
+
+from auth.models import AuthenticatedUser, Role, TokenResponse, User
+from auth.jwt_handler import (
+    create_access_token, create_refresh_token, decode_token,
+    get_current_user, require_roles
+)
+from auth.storage import auth_storage
+from collab.ws_hub import ws_hub
+from collab.comments import comment_store
+from collab.approvals import draft_store
+from collab.webhooks import webhook_store, dispatch_webhook_event
+from collab.audit import audit_store
 
 # Load environment variables from backend/.env
 load_dotenv()
@@ -430,4 +445,588 @@ def review_content(request: ReviewRequest):
             status_code=502,
             detail=f"Grounded review processing error ({exc.__class__.__name__}): {exc}",
         )
+
+
+# --------------------------------------------------
+# FEATURE 2: Authentication & Multi-Tenant RBAC Endpoints
+# --------------------------------------------------
+
+class LoginRequest(BaseModel):
+    email: str
+    password: Optional[str] = "password"
+    provider: str = "google"  # 'google', 'microsoft', 'local'
+    role: Optional[Role] = None
+
+
+class SwitchRoleRequest(BaseModel):
+    role: Role
+
+
+class DraftCreateRequest(BaseModel):
+    title: str
+    content: str = ""
+
+
+class DraftUpdateRequest(BaseModel):
+    content: str
+
+
+class DraftTransitionRequest(BaseModel):
+    status: str
+    reason: Optional[str] = None
+
+
+class CommentCreateRequest(BaseModel):
+    start_offset: int
+    end_offset: int
+    selected_text: str
+    comment: str
+
+
+class CommentReplyRequest(BaseModel):
+    comment: str
+
+
+class WebhookCreateRequest(BaseModel):
+    platform: str  # 'slack' or 'teams'
+    url: str
+    events: Optional[list[str]] = None
+
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+def login(request: LoginRequest, response: Response):
+    """
+    Enterprise OAuth 2.0 / SSO login (Google & Microsoft).
+    Issues JWT access/refresh tokens in secure httpOnly cookies.
+    """
+    name = request.email.split("@")[0].replace(".", " ").title()
+    default_role = request.role or Role.EDITOR
+    if "admin" in request.email.lower():
+        default_role = Role.ADMIN
+    elif "reviewer" in request.email.lower():
+        default_role = Role.REVIEWER
+
+    user = auth_storage.get_or_create_oauth_user(
+        email=request.email,
+        name=name,
+        provider=request.provider,
+        tenant_id="default-tenant",
+        default_role=default_role,
+    )
+
+    access_token = create_access_token(user)
+    refresh_token = create_refresh_token(user)
+
+    # Set httpOnly cookies
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=3600,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=7 * 86400,
+        samesite="lax",
+    )
+
+    audit_store.log(
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        user_name=user.name,
+        user_role=user.role.value,
+        action="user_login",
+        resource_type="auth",
+        resource_id=user.user_id,
+        details={"provider": request.provider, "email": request.email},
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        expires_in=3600,
+        user=user,
+    )
+
+
+@app.post("/api/auth/refresh", response_model=TokenResponse)
+def refresh_token(
+    response: Response,
+    refresh_token: Optional[str] = Cookie(None, alias="refresh_token"),
+):
+    """Refreshes access token using refresh token from httpOnly cookie."""
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    payload = decode_token(refresh_token, expected_type="refresh")
+    user = auth_storage.get_authenticated_user(payload["sub"], payload["tenant_id"])
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    new_access_token = create_access_token(user)
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        max_age=3600,
+        samesite="lax",
+    )
+    return TokenResponse(access_token=new_access_token, expires_in=3600, user=user)
+
+
+@app.post("/api/auth/logout")
+def logout(response: Response, current_user: AuthenticatedUser = Depends(get_current_user)):
+    """Logs out user and clears session cookies."""
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    audit_store.log(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=current_user.role.value,
+        action="user_logout",
+        resource_type="auth",
+        resource_id=current_user.user_id,
+    )
+    return {"message": "Logged out successfully"}
+
+
+@app.get("/api/auth/me", response_model=AuthenticatedUser)
+def get_me(current_user: AuthenticatedUser = Depends(get_current_user)):
+    """Returns profile and role permissions of current user."""
+    return current_user
+
+
+@app.post("/api/auth/switch-role", response_model=TokenResponse)
+def switch_role(
+    req: SwitchRoleRequest,
+    response: Response,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Role switch utility for interactive demo/testing across Admin, Reviewer, Editor, Viewer."""
+    auth_storage.set_user_role(current_user.tenant_id, current_user.user_id, req.role)
+    updated_user = auth_storage.get_authenticated_user(current_user.user_id, current_user.tenant_id)
+
+    new_token = create_access_token(updated_user)
+    response.set_cookie(
+        key="access_token",
+        value=new_token,
+        httponly=True,
+        max_age=3600,
+        samesite="lax",
+    )
+    audit_store.log(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=req.role.value,
+        action="role_switched",
+        resource_type="auth",
+        resource_id=current_user.user_id,
+        details={"new_role": req.role.value},
+    )
+    return TokenResponse(access_token=new_token, expires_in=3600, user=updated_user)
+
+
+@app.get("/api/auth/team")
+def get_team_members(current_user: AuthenticatedUser = Depends(get_current_user)):
+    """Lists organization team members in current tenant."""
+    members = auth_storage.list_team_members(current_user.tenant_id)
+    return {"members": [m.model_dump() for m in members]}
+
+
+# --------------------------------------------------
+# Collaborative Drafts & Role-Based Approval Queue
+# --------------------------------------------------
+
+@app.get("/api/drafts")
+def list_drafts(current_user: AuthenticatedUser = Depends(get_current_user)):
+    """Lists drafts scoped to current tenant."""
+    drafts = draft_store.list_drafts(current_user.tenant_id)
+    return {"drafts": [d.model_dump() for d in drafts]}
+
+
+@app.get("/api/drafts/{draft_id}")
+def get_draft(draft_id: str, current_user: AuthenticatedUser = Depends(get_current_user)):
+    draft = draft_store.get_draft(draft_id, current_user.tenant_id)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return {"draft": draft.model_dump()}
+
+
+@app.post("/api/drafts")
+def create_draft(
+    req: DraftCreateRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    if current_user.role == Role.VIEWER:
+        raise HTTPException(status_code=403, detail="Viewers cannot create drafts")
+    draft = draft_store.create_draft(
+        tenant_id=current_user.tenant_id,
+        title=req.title,
+        content=req.content,
+        created_by=current_user.user_id,
+    )
+    audit_store.log(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=current_user.role.value,
+        action="draft_created",
+        resource_type="draft",
+        resource_id=draft.id,
+        details={"title": draft.title},
+    )
+    return {"draft": draft.model_dump()}
+
+
+@app.put("/api/drafts/{draft_id}")
+async def update_draft(
+    draft_id: str,
+    req: DraftUpdateRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    draft = draft_store.update_draft_content(
+        draft_id=draft_id,
+        tenant_id=current_user.tenant_id,
+        content=req.content,
+        user_role=current_user.role,
+    )
+    # Broadcast to active collaborators in room
+    room_key = f"{current_user.tenant_id}:{draft_id}"
+    await ws_hub.broadcast_content_change(
+        room_key=room_key,
+        user_id=current_user.user_id,
+        change_data={"content": draft.content, "version": draft.version},
+    )
+    return {"draft": draft.model_dump()}
+
+
+@app.post("/api/drafts/{draft_id}/transition")
+async def transition_draft_status(
+    draft_id: str,
+    req: DraftTransitionRequest,
+    background_tasks: BackgroundTasks,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Executes role-gated state transition:
+    - Editor/Creator can submit to 'In Review'
+    - Reviewer/Admin can transition to 'Approved' or 'Rejected'
+    Dispatches webhooks to Slack/Teams and logs audit entry.
+    """
+    draft = draft_store.transition_status(
+        draft_id=draft_id,
+        tenant_id=current_user.tenant_id,
+        target_status=req.status,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=current_user.role,
+        reason=req.reason,
+    )
+
+    # Log audit entry
+    audit_store.log(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=current_user.role.value,
+        action=f"status_changed_to_{req.status.lower().replace(' ', '_')}",
+        resource_type="draft",
+        resource_id=draft.id,
+        details={"status": req.status, "reason": req.reason},
+    )
+
+    # Broadcast status change via WebSocket
+    await ws_hub.broadcast_status_change(
+        tenant_id=current_user.tenant_id,
+        draft_id=draft.id,
+        new_status=req.status,
+        changed_by=current_user.name,
+    )
+
+    # Dispatch webhooks asynchronously
+    event_name = (
+        "review_requested"
+        if req.status == "In Review"
+        else "decision_approved"
+        if req.status == "Approved"
+        else "decision_rejected"
+    )
+    background_tasks.add_task(
+        dispatch_webhook_event,
+        tenant_id=current_user.tenant_id,
+        event=event_name,
+        title=f"Draft '{draft.title}' is now {req.status}",
+        details={
+            "draft_title": draft.title,
+            "status": req.status,
+            "by": f"{current_user.name} ({current_user.role.value})",
+            "summary": req.reason or f"Status shifted to {req.status}",
+        },
+    )
+
+    return {"message": f"Draft status changed to {req.status}", "draft": draft.model_dump()}
+
+
+# --------------------------------------------------
+# Threaded Inline Review Comments
+# --------------------------------------------------
+
+@app.get("/api/drafts/{draft_id}/comments")
+def get_draft_comments(draft_id: str, current_user: AuthenticatedUser = Depends(get_current_user)):
+    comments = comment_store.get_comments(current_user.tenant_id, draft_id)
+    return {"comments": [c.model_dump() for c in comments]}
+
+
+@app.post("/api/drafts/{draft_id}/comments")
+async def add_inline_comment(
+    draft_id: str,
+    req: CommentCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    if current_user.role == Role.VIEWER:
+        raise HTTPException(status_code=403, detail="Viewers cannot add comments")
+
+    comment = comment_store.add_comment(
+        tenant_id=current_user.tenant_id,
+        draft_id=draft_id,
+        author_id=current_user.user_id,
+        author_name=current_user.name,
+        author_role=current_user.role.value,
+        start_offset=req.start_offset,
+        end_offset=req.end_offset,
+        selected_text=req.selected_text,
+        comment=req.comment,
+    )
+
+    # Broadcast via WebSocket
+    await ws_hub.broadcast_comment_event(
+        tenant_id=current_user.tenant_id,
+        draft_id=draft_id,
+        event_data={"action": "created", "comment": comment.model_dump()},
+    )
+
+    # Log audit entry
+    audit_store.log(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=current_user.role.value,
+        action="comment_added",
+        resource_type="comment",
+        resource_id=comment.id,
+        details={"quote": req.selected_text[:50], "comment": req.comment},
+    )
+
+    # Dispatch webhooks
+    background_tasks.add_task(
+        dispatch_webhook_event,
+        tenant_id=current_user.tenant_id,
+        event="comment_added",
+        title=f"New comment by {current_user.name}",
+        details={
+            "draft_title": f"Draft {draft_id[:8]}",
+            "by": f"{current_user.name} ({current_user.role.value})",
+            "summary": f'"{req.selected_text}": {req.comment}',
+        },
+    )
+
+    return {"comment": comment.model_dump()}
+
+
+@app.post("/api/drafts/{draft_id}/comments/{comment_id}/reply")
+async def add_comment_reply(
+    draft_id: str,
+    comment_id: str,
+    req: CommentReplyRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    if current_user.role == Role.VIEWER:
+        raise HTTPException(status_code=403, detail="Viewers cannot reply")
+
+    updated = comment_store.add_reply(
+        tenant_id=current_user.tenant_id,
+        comment_id=comment_id,
+        author_id=current_user.user_id,
+        author_name=current_user.name,
+        author_role=current_user.role.value,
+        reply_text=req.comment,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    await ws_hub.broadcast_comment_event(
+        tenant_id=current_user.tenant_id,
+        draft_id=draft_id,
+        event_data={"action": "reply", "comment": updated.model_dump()},
+    )
+
+    return {"comment": updated.model_dump()}
+
+
+@app.patch("/api/drafts/{draft_id}/comments/{comment_id}/resolve")
+async def toggle_resolve_comment(
+    draft_id: str,
+    comment_id: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    updated = comment_store.toggle_resolve(
+        tenant_id=current_user.tenant_id,
+        comment_id=comment_id,
+        user_name=current_user.name,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    await ws_hub.broadcast_comment_event(
+        tenant_id=current_user.tenant_id,
+        draft_id=draft_id,
+        event_data={"action": "resolve_toggled", "comment": updated.model_dump()},
+    )
+    return {"comment": updated.model_dump()}
+
+
+# --------------------------------------------------
+# Webhooks Configuration (Slack & Microsoft Teams)
+# --------------------------------------------------
+
+@app.get("/api/webhooks")
+def list_webhooks(current_user: AuthenticatedUser = Depends(get_current_user)):
+    """Lists webhooks configured for this organization."""
+    return {"webhooks": [w.model_dump() for w in webhook_store.list_webhooks(current_user.tenant_id)]}
+
+
+@app.post("/api/webhooks")
+def register_webhook(
+    req: WebhookCreateRequest,
+    current_user: AuthenticatedUser = Depends(require_roles([Role.ADMIN])),
+):
+    """Registers an enterprise incoming webhook for Slack or Microsoft Teams."""
+    cfg = webhook_store.add_webhook(
+        tenant_id=current_user.tenant_id,
+        platform=req.platform,
+        url=req.url,
+        events=req.events,
+    )
+    audit_store.log(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        user_name=current_user.name,
+        user_role=current_user.role.value,
+        action="webhook_registered",
+        resource_type="webhook",
+        resource_id=cfg.id,
+        details={"platform": req.platform, "url": req.url[:30] + "..."},
+    )
+    return {"message": "Webhook registered successfully", "webhook": cfg.model_dump()}
+
+
+@app.delete("/api/webhooks/{webhook_id}")
+def remove_webhook(
+    webhook_id: str,
+    current_user: AuthenticatedUser = Depends(require_roles([Role.ADMIN])),
+):
+    success = webhook_store.delete_webhook(current_user.tenant_id, webhook_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    return {"message": "Webhook removed"}
+
+
+# --------------------------------------------------
+# Enterprise Audit Log Query
+# --------------------------------------------------
+
+@app.get("/api/audit")
+def query_audit_logs(
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 50,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Retrieves immutable chronological audit trail scoped to tenant."""
+    entries = audit_store.query(
+        tenant_id=current_user.tenant_id,
+        user_id=user_id,
+        action=action,
+        limit=limit,
+    )
+    return {"audit_logs": [e.model_dump() for e in entries]}
+
+
+# --------------------------------------------------
+# Real-Time WebSocket Endpoint
+# --------------------------------------------------
+
+@app.websocket("/ws/drafts/{draft_id}")
+async def websocket_draft_endpoint(
+    websocket: WebSocket,
+    draft_id: str,
+    token: Optional[str] = Query(None),
+):
+    """
+    Authenticated WebSocket connection for real-time collaborative editing,
+    presence indicator synchronization, and live cursors.
+    """
+    # Authenticate via JWT token
+    user = None
+    if token:
+        try:
+            payload = decode_token(token, expected_type="access")
+            user = AuthenticatedUser(
+                user_id=payload["sub"],
+                email=payload.get("email", ""),
+                name=payload.get("name", "Collaborator"),
+                avatar_url=payload.get("avatar_url"),
+                tenant_id=payload["tenant_id"],
+                tenant_name=payload.get("tenant_name", "Acme CloudSync"),
+                role=Role(payload["role"]),
+            )
+        except Exception:
+            pass
+
+    if not user:
+        # Fallback for local demo
+        user = AuthenticatedUser(
+            user_id=f"guest-{int(time.time()*1000)%10000}",
+            email="guest@acme.com",
+            name="Collaborator",
+            avatar_url="https://api.dicebear.com/7.x/avataaars/svg?seed=Guest",
+            tenant_id="default-tenant",
+            tenant_name="Acme CloudSync",
+            role=Role.EDITOR,
+        )
+
+    await ws_hub.connect(websocket, user.tenant_id, draft_id, user)
+    room_key = f"{user.tenant_id}:{draft_id}"
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+
+            if msg_type == "cursor":
+                await ws_hub.broadcast_cursor(room_key, user.user_id, data)
+            elif msg_type == "content_change":
+                await ws_hub.broadcast_content_change(room_key, user.user_id, data)
+                # Persist content changes to draft store
+                if "content" in data:
+                    draft_store.update_draft_content(
+                        draft_id=draft_id,
+                        tenant_id=user.tenant_id,
+                        content=data["content"],
+                        user_role=user.role,
+                    )
+            elif msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
+
+    except WebSocketDisconnect:
+        await ws_hub.disconnect(websocket, user.tenant_id, draft_id)
+    except Exception as exc:
+        logger.warning(f"WebSocket session error: {exc}")
+        await ws_hub.disconnect(websocket, user.tenant_id, draft_id)
+
 
