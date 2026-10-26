@@ -5,6 +5,7 @@ export const API_BASE = import.meta.env.VITE_BRANDGUARD_API_URL ?? (isLocal ? "h
 export async function reviewWithBrandGuard({
   content,
   brandName = "Acme CloudSync",
+  tenantId = "default-tenant",
   guidelines,
   approvedFacts,
   bannedTerms,
@@ -16,6 +17,7 @@ export async function reviewWithBrandGuard({
     body: JSON.stringify({
       content,
       brand_name: brandName,
+      tenant_id: tenantId,
       ...(guidelines ? { guidelines } : {}),
       ...(approvedFacts ? { approved_facts: approvedFacts } : {}),
       ...(bannedTerms ? { banned_terms: bannedTerms } : {}),
@@ -28,4 +30,18 @@ export async function reviewWithBrandGuard({
     throw new Error(data.detail || `Review failed (${response.status})`);
   }
   return data;
+}
+
+export async function fetchDocuments(tenantId = "default-tenant") {
+  const res = await fetch(`${API_BASE}/api/documents?tenant_id=${tenantId}`);
+  if (!res.ok) throw new Error("Failed to fetch documents");
+  return res.json();
+}
+
+export async function searchGuidelineChunks(query, tenantId = "default-tenant", topK = 4) {
+  const res = await fetch(
+    `${API_BASE}/api/rag/search?query=${encodeURIComponent(query)}&tenant_id=${tenantId}&top_k=${topK}`
+  );
+  if (!res.ok) throw new Error("Search query failed");
+  return res.json();
 }

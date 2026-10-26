@@ -5,11 +5,18 @@ import threading
 from typing import Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
+
+from rag.chunker import DocumentChunk
+from rag.embedder import GeminiEmbedder
+from rag.vector_store import get_vector_store
+from rag.ingestion import IngestionManager
+from rag.review_engine import RAGReviewEngine, GroundedFinding
+from rag.seed_data import seed_guidelines_if_empty
 
 # Load environment variables from backend/.env
 load_dotenv()
@@ -182,6 +189,18 @@ class GeminiKeyAgent:
 
 gemini_agent = GeminiKeyAgent()
 
+# Initialize RAG Pipeline components
+vector_store = get_vector_store()
+embedder = GeminiEmbedder(key_agent=gemini_agent, model="text-embedding-004")
+ingestion_manager = IngestionManager(vector_store=vector_store, embedder=embedder)
+rag_review_engine = RAGReviewEngine(
+    embedder=embedder,
+    vector_store=vector_store,
+    ingestion_manager=ingestion_manager,
+    key_agent=gemini_agent,
+    model=MODEL,
+)
+
 
 # --------------------------------------------------
 # FastAPI application
@@ -189,26 +208,35 @@ gemini_agent = GeminiKeyAgent()
 
 app = FastAPI(
     title=APP_NAME,
-    version="2.0",
-    description="AI-powered brand content review API with automatic multi-key failover",
+    version="3.0",
+    description="Intelligent Brand Governance Platform with RAG, Multi-Modal Vision, and Enterprise Collaboration",
 )
 
 origins = [
     origin.strip()
     for origin in os.getenv(
         "FRONTEND_ORIGINS",
-        "http://localhost:5173",
+        "http://localhost:5173,http://127.0.0.1:5173",
     ).split(",")
     if origin.strip()
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_origins=["*"] if "*" in origins else origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def on_startup():
+    """Seed initial enterprise guidelines for default tenant on boot if empty."""
+    try:
+        seed_guidelines_if_empty(ingestion_manager, tenant_id="default-tenant")
+    except Exception as e:
+        logger.warning(f"Could not run initial guideline seed: {e}")
 
 
 # --------------------------------------------------
@@ -216,37 +244,18 @@ app.add_middleware(
 # --------------------------------------------------
 
 class ReviewRequest(BaseModel):
-    brand_name: str = Field(
-        default="",
-        max_length=200,
-    )
-    content: str = Field(
-        min_length=1,
-        max_length=20000,
-    )
-
-
-class Finding(BaseModel):
-    id: str = ""
-    issue_type: str
-    severity: Literal["HIGH", "MEDIUM", "LOW"]
-    quote: str = ""
-    explanation: str
-    source_rule: str = ""
-    confidence: int = Field(ge=0, le=100)
-    suggested_fix: str = ""
-    needs_human_review: bool = False
-
-
-class GeminiReviewOutput(BaseModel):
-    findings: list[Finding] = Field(default_factory=list)
+    brand_name: str = Field(default="", max_length=200)
+    content: str = Field(min_length=1, max_length=20000)
+    tenant_id: str = Field(default="default-tenant")
 
 
 class ReviewResponse(BaseModel):
     brand_name: str
     model: str
     original_content: str
-    findings: list[Finding]
+    findings: list[GroundedFinding]
+    grounding_chunks_used: int = 0
+    retrieved_sources: list[dict] = Field(default_factory=list)
     disclaimer: str
 
 
@@ -257,8 +266,9 @@ class ReviewResponse(BaseModel):
 @app.get("/")
 def home():
     return {
-        "message": "BrandGuard AI API is running",
+        "message": "BrandGuard AI API (Round 3) is running",
         "docs": "/docs",
+        "version": "3.0",
     }
 
 
@@ -271,117 +281,153 @@ def health():
         "api_keys_configured": gemini_agent.key_count,
         "active_key_index": (gemini_agent.active_index + 1) if gemini_agent.key_count > 0 else 0,
         "api_key_configured": gemini_agent.key_count > 0,
+        "rag_vector_chunks_indexed": vector_store.get_chunk_count(),
+        "rag_documents_count": len(ingestion_manager.list_documents("all")),
     }
 
 
 # --------------------------------------------------
-# Gemini AI content review with multi-key failover
+# RAG Document Ingestion & Knowledge Base Endpoints
+# --------------------------------------------------
+
+@app.get("/api/documents")
+def list_documents(tenant_id: str = "default-tenant"):
+    """Lists all ingested brand guideline documents for the tenant."""
+    docs = ingestion_manager.list_documents(tenant_id)
+    return {"documents": [d.model_dump() for d in docs]}
+
+
+@app.post("/api/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    tenant_id: str = Form("default-tenant"),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    """
+    Uploads a PDF, DOCX, or TXT brand guideline document.
+    Dispatches asynchronous parsing, chunking, embedding, and vector indexing.
+    """
+    contents = await file.read()
+    if len(contents) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size exceeds 25MB enterprise limit")
+
+    doc = ingestion_manager.register_document(
+        filename=file.filename,
+        file_bytes=contents,
+        tenant_id=tenant_id,
+    )
+
+    # Process in background task
+    background_tasks.add_task(ingestion_manager.process_document, doc.id)
+
+    return {
+        "message": "Document uploaded successfully and queued for vector indexing",
+        "document": doc.model_dump(),
+    }
+
+
+@app.get("/api/documents/{document_id}")
+def get_document_details(document_id: str, tenant_id: str = "default-tenant"):
+    """Fetches status and details of a single guideline document."""
+    doc = ingestion_manager.get_document(document_id, tenant_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"document": doc.model_dump()}
+
+
+@app.get("/api/documents/{document_id}/chunks")
+def get_document_chunks(document_id: str, tenant_id: str = "default-tenant"):
+    """Returns parsed chunk snippets and heading metadata for a document."""
+    chunks = vector_store.get_chunks_by_document(document_id, tenant_id)
+    return {"chunks": [c.model_dump() for c in chunks]}
+
+
+@app.delete("/api/documents/{document_id}")
+def delete_document(document_id: str, tenant_id: str = "default-tenant"):
+    """Deletes document and removes all corresponding vector embeddings."""
+    success = ingestion_manager.delete_document(document_id, tenant_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Document not found or delete failed")
+    return {"message": "Document and vector embeddings deleted successfully"}
+
+
+@app.post("/api/documents/{document_id}/reindex")
+def reindex_document(
+    document_id: str,
+    tenant_id: str = "default-tenant",
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    """Re-triggers extraction, sliding-window chunking, and embedding."""
+    doc = ingestion_manager.get_document(document_id, tenant_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    background_tasks.add_task(ingestion_manager.reindex_document, document_id, tenant_id)
+    return {"message": "Document reindexing queued", "document_id": document_id}
+
+
+@app.get("/api/rag/search")
+def test_rag_similarity_search(
+    query: str,
+    tenant_id: str = "default-tenant",
+    top_k: int = 4,
+):
+    """Semantic vector search test endpoint for inspecting grounding retrieval."""
+    if not query.strip():
+        return {"query": query, "results": []}
+
+    q_vec = embedder.embed_query(query)
+    results = vector_store.similarity_search(
+        query_embedding=q_vec,
+        tenant_id=tenant_id,
+        top_k=top_k,
+        score_threshold=0.35,
+    )
+
+    formatted = []
+    for chunk, score in results:
+        doc = ingestion_manager.get_document(chunk.document_id, tenant_id)
+        formatted.append({
+            "chunk_id": chunk.id,
+            "document_name": doc.filename if doc else "Brand Guideline",
+            "heading": chunk.section_heading,
+            "page": chunk.page_number or 1,
+            "score": round(score, 3),
+            "content": chunk.content,
+        })
+    return {"query": query, "results": formatted}
+
+
+# --------------------------------------------------
+# RAG-Grounded Content Review
 # --------------------------------------------------
 
 @app.post("/api/review", response_model=ReviewResponse)
 def review_content(request: ReviewRequest):
-
-    # Send the submitted brand and content to Gemini.
-    user_payload = {
-        "brand_name": request.brand_name,
-        "content": request.content,
-    }
-
-    instructions = """
-You are BrandGuard AI, an assistant that reviews marketing
-and brand content for potential compliance and communication risks.
-
-Analyze the submitted content carefully.
-
-Look for issues such as:
-1. Unsupported or exaggerated claims.
-2. Absolute guarantees and misleading promises.
-3. Potentially deceptive statements.
-4. Missing evidence for factual or performance claims.
-5. Risky health, financial, legal, or safety claims.
-6. Potentially offensive or inappropriate wording.
-7. Brand consistency and clarity problems.
-
-Rules:
-- Review the actual submitted text, not imaginary content.
-- Do not invent brand policies, laws, or evidence.
-- Do not automatically label every text as risky.
-- If no meaningful issue is found, return an empty findings array.
-- Only report specific, relevant potential issues.
-- Use short exact quotes from the submitted content.
-- Explain why each issue may matter.
-- Give a practical suggested fix.
-- Use HIGH, MEDIUM, or LOW severity.
-- Confidence must be an integer from 0 to 100.
-- If there is no verified source rule, leave source_rule empty
-  and set needs_human_review to true.
-- A review is an AI assessment, not a guarantee of compliance.
-"""
-
-    def call_gemini(client: genai.Client):
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=json.dumps(
-                user_payload,
-                ensure_ascii=False,
-            ),
-            config=types.GenerateContentConfig(
-                system_instruction=instructions,
-                response_mime_type="application/json",
-                response_schema=GeminiReviewOutput,
-                temperature=0.2,
-            ),
-        )
-
-        # Prefer the SDK's parsed structured output.
-        if response.parsed is not None:
-            if isinstance(response.parsed, GeminiReviewOutput):
-                return response.parsed
-            else:
-                return GeminiReviewOutput.model_validate(
-                    response.parsed
-                )
-        else:
-            return GeminiReviewOutput.model_validate_json(
-                response.text or "{}"
-            )
-
+    """
+    RAG-grounded content review.
+    Embeds input content, retrieves top-k guideline chunks filtered by tenant,
+    and returns findings citing source document, section/page, and exact snippet.
+    Abstains when no verified rule exists.
+    """
     try:
-        result = gemini_agent.execute_with_failover(call_gemini)
-    except HTTPException:
-        raise
+        response = rag_review_engine.review(
+            content=request.content,
+            brand_name=request.brand_name or "Acme CloudSync",
+            tenant_id=request.tenant_id or "default-tenant",
+        )
+        return ReviewResponse(
+            brand_name=response.brand_name,
+            model=response.model,
+            original_content=response.original_content,
+            findings=response.findings,
+            grounding_chunks_used=response.grounding_chunks_used,
+            retrieved_sources=response.retrieved_sources,
+            disclaimer=response.disclaimer,
+        )
     except Exception as exc:
-        logger.error(f"Gemini review error: {exc.__class__.__name__}: {exc}")
+        logger.error(f"RAG review failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=502,
-            detail=(
-                f"Gemini review failed ({exc.__class__.__name__}). "
-                "Check backend API keys, model name, and quota."
-            ),
-        ) from None
+            detail=f"Grounded review processing error ({exc.__class__.__name__}): {exc}",
+        )
 
-    # Assign unique IDs and flag findings without a source rule.
-    findings = []
-
-    for index, item in enumerate(
-        result.findings,
-        start=1,
-    ):
-        if not item.source_rule:
-            item.needs_human_review = True
-
-        item.id = f"finding-{index}"
-        findings.append(item)
-
-    # Keep the original submitted content unchanged.
-    return ReviewResponse(
-        brand_name=request.brand_name,
-        model=MODEL,
-        original_content=request.content,
-        findings=findings,
-        disclaimer=(
-            "AI-generated review only. Findings may be incomplete "
-            "or inaccurate. Verify applicable brand policies, "
-            "evidence, and legal requirements before making decisions."
-        ),
-    )

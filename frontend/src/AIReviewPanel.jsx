@@ -126,10 +126,25 @@ export default function AIReviewPanel() {
               <blockquote className="ai-quote">
                 "{finding.quote}"
               </blockquote>
-              <p className="ai-explanation">{finding.explanation}</p>
-              <p className="ai-muted ai-small">
-                Source: {finding.source_rule || "No approved source found — needs human review"}
-              </p>
+              {finding.source_document || finding.retrieved_snippet ? (
+                <div className="grounded-citation-badge">
+                  <div className="cite-doc">
+                    <span role="img" aria-label="source">📖</span>
+                    <strong>{finding.source_document || "Enterprise Guideline"}</strong>
+                    {finding.source_rule && <span>· {finding.source_rule}</span>}
+                  </div>
+                  {finding.retrieved_snippet && (
+                    <blockquote className="cite-snippet">
+                      "{finding.retrieved_snippet}"
+                    </blockquote>
+                  )}
+                </div>
+              ) : (
+                <div className="no-source-warning">
+                  <span>⚠</span>
+                  <strong>No matching rule found in Knowledge Base:</strong> Human discretion required instead of auto-applying rules.
+                </div>
+              )}
               <div className="ai-suggestion">
                 <p className="ai-suggestion-label">Suggested fix — not applied</p>
                 <p className="ai-suggestion-text">{finding.suggested_fix}</p>
