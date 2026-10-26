@@ -52,8 +52,9 @@ export default function SubmissionPage({ goTo }) {
         <div className="sub-hero-glow" />
         <motion.div className="sub-hero-content" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <div className="sub-hero-badge">
-            <Award size={14} /> INKLOOM AI HACKATHON — ROUND 2 SUBMISSION
+            <Award size={14} /> INKLOOM AI HACKATHON — ROUND 3 COMPLETE
           </div>
+
           <h1>
             Brand<span className="gradient-text">Guard</span>
           </h1>
@@ -320,7 +321,18 @@ export default function SubmissionPage({ goTo }) {
               '✅ Backend health check and connection status indicator',
             ]}
           />
+          <TimelineItem
+            round="ROUND 3"
+            title="Enterprise Scaling & Multi-Modal Governance"
+            active
+            items={[
+              '✅ Feature 1: RAG-Powered Knowledge Base & Document Ingestion (PDF/DOCX, sliding-window chunking, Gemini text-embedding-004, pluggable VectorStore)',
+              '✅ Feature 2: Multi-User Collaboration & Enterprise Authentication (JWT httpOnly cookies, RBAC, WebSockets presence & co-editing, threaded inline comments, approval workflow, Slack/Teams webhooks, immutable audit trail)',
+              '✅ Feature 3: Visual & Multi-Modal Brand Governance (CIEDE2000 ΔE₀₀ color distance, k-means palette clustering, WCAG 2.1 AA/AAA contrast checks, Gemini Vision logo integrity & bounding boxes)',
+            ]}
+          />
         </div>
+
 
         <div className="sub-changes-section">
           <h3><Wrench size={20} /> Changes from Original Plan</h3>
@@ -345,9 +357,10 @@ export default function SubmissionPage({ goTo }) {
       <section className="section sub-r3-section">
         <div className="container">
           <div className="sub-section-header">
-            <span className="kicker light">THREE MAJOR IMPROVEMENTS</span>
-            <h2>Round 3 <span>roadmap</span></h2>
-            <p>Three substantial, meaningful additions that significantly enhance the product's capabilities.</p>
+            <span className="kicker light">ALL THREE ROADMAP FEATURES DELIVERED</span>
+            <h2>Round 3 <span>Completed Deliverables</span></h2>
+            <p>Three production-ready features significantly elevating BrandGuard from prototype to enterprise-ready platform.</p>
+
           </div>
 
           <div className="sub-r3-grid">

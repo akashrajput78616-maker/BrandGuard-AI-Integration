@@ -24,7 +24,7 @@ from rag.seed_data import seed_guidelines_if_empty
 from auth.models import AuthenticatedUser, Role, TokenResponse, User
 from auth.jwt_handler import (
     create_access_token, create_refresh_token, decode_token,
-    get_current_user, require_roles
+    get_current_user, get_current_user_optional, require_roles
 )
 from auth.storage import auth_storage
 from collab.ws_hub import ws_hub
@@ -32,6 +32,9 @@ from collab.comments import comment_store
 from collab.approvals import draft_store
 from collab.webhooks import webhook_store, dispatch_webhook_event
 from collab.audit import audit_store
+from vision.delta_e import DEFAULT_ACME_PALETTE, compare_against_brand_palette
+from vision.contrast import evaluate_wcag, contrast_ratio
+from vision.processor import audit_visual_asset
 
 # Load environment variables from backend/.env
 load_dotenv()
@@ -105,7 +108,14 @@ class GeminiKeyAgent:
     def key_count(self) -> int:
         return len(self.keys)
 
+    def get_active_key(self) -> Optional[str]:
+        with self.lock:
+            if not self.keys:
+                return None
+            return self.keys[self.active_index % len(self.keys)]
+
     @staticmethod
+
     def mask_key(key: str) -> str:
         if not key:
             return "none"
@@ -1028,5 +1038,133 @@ async def websocket_draft_endpoint(
     except Exception as exc:
         logger.warning(f"WebSocket session error: {exc}")
         await ws_hub.disconnect(websocket, user.tenant_id, draft_id)
+
+
+# --------------------------------------------------
+# Visual & Multi-Modal Brand Governance Endpoints
+# --------------------------------------------------
+
+class CheckColorRequest(BaseModel):
+    hex: str
+    tolerance: float = 5.0
+
+
+class CheckContrastRequest(BaseModel):
+    text_color: str
+    background_color: str
+    font_size_pt: float = 14.0
+    is_bold: bool = False
+
+
+@app.get("/api/vision/palette")
+def get_brand_palette():
+    """Returns approved brand color palette with standard usage rules."""
+    return {
+        "palette": DEFAULT_ACME_PALETTE,
+        "delta_e_thresholds": {
+            "exact_pass": "< 2.0 (Imperceptible)",
+            "acceptable": "2.0 - 5.0 (Acceptable variance)",
+            "off_brand": "> 5.0 (Strict brand violation)",
+        }
+    }
+
+
+@app.post("/api/vision/check-color")
+def check_color_deviation(req: CheckColorRequest):
+    """Calculates CIEDE2000 Delta-E color distance against nearest brand color."""
+    result = compare_against_brand_palette(
+        extracted_hex=req.hex,
+        approved_palette=DEFAULT_ACME_PALETTE,
+        tolerance=req.tolerance,
+    )
+    return result
+
+
+@app.post("/api/vision/check-contrast")
+def check_wcag_contrast(req: CheckContrastRequest):
+    """Calculates WCAG 2.1 contrast ratio and AA/AAA pass/fail compliance."""
+    result = evaluate_wcag(
+        text_color_hex=req.text_color,
+        background_color_hex=req.background_color,
+        font_size_pt=req.font_size_pt,
+        is_bold=req.is_bold,
+    )
+    return result
+
+
+@app.post("/api/vision/audit")
+async def audit_visual_upload(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+    current_user: Optional[AuthenticatedUser] = Depends(get_current_user_optional),
+):
+    """
+    Multi-modal brand governance audit on uploaded images, banners, or presentation slides.
+    Extracts dominant colors, computes Delta-E vs brand palette, evaluates WCAG 2.1 contrast,
+    and runs Gemini Vision to detect logo distortion and text legibility.
+    """
+    # Validate extension
+    filename = file.filename or "uploaded_asset.png"
+    ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    valid_exts = {"png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff", "svg", "pdf"}
+    if ext not in valid_exts:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported format '.{ext}'. Supported: PNG, JPG, WEBP, GIF, BMP, TIFF, SVG, PDF."
+        )
+
+    # 15MB file size limit
+    content = await file.read()
+    if len(content) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Asset exceeds maximum allowed size (15MB).")
+
+    # Get working Gemini API key from key agent
+    gemini_key = gemini_agent.get_active_key()
+
+    # Determine mime-type
+    mime_type = file.content_type or "image/png"
+    if mime_type == "application/octet-stream":
+        if ext in ("jpg", "jpeg"):
+            mime_type = "image/jpeg"
+        elif ext == "webp":
+            mime_type = "image/webp"
+        elif ext == "pdf":
+            mime_type = "application/pdf"
+        else:
+            mime_type = "image/png"
+
+    # Run complete visual audit pipeline
+    report = await audit_visual_asset(
+        image_bytes=content,
+        filename=filename,
+        mime_type=mime_type,
+        api_key=gemini_key,
+        approved_palette=DEFAULT_ACME_PALETTE,
+        model=MODEL,
+    )
+
+    # Audit log if user is present
+    tenant_id = current_user.tenant_id if current_user else "default-tenant"
+    user_name = current_user.name if current_user else "Designer"
+    user_id = current_user.user_id if current_user else "system"
+    role_val = current_user.role.value if current_user else "Editor"
+
+    audit_store.log(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        user_name=user_name,
+        user_role=role_val,
+        action="visual_audit_completed",
+        resource_type="visual_asset",
+        resource_id=filename,
+        details={
+            "score": report.get("overall_score"),
+            "status": report.get("compliance_status"),
+            "findings_count": len(report.get("vision_findings", [])),
+        },
+    )
+
+    return report
+
 
 
