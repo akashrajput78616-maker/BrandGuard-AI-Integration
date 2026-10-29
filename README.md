@@ -192,8 +192,8 @@ flowchart LR
 
 | Variable | Required | Example Value | Description |
 | :--- | :---: | :--- | :--- |
-| `VITE_API_URL` | **Yes** | `https://brandguard-api.onrender.com` | HTTPS base URL of the deployed Render backend |
-| `VITE_WS_URL` | **Yes** | `wss://brandguard-api.onrender.com` | WSS base URL for persistent real-time WebSockets |
+| `VITE_API_URL` | **Yes** | `https://brandguard-api-np6g.onrender.com` | HTTPS base URL of the deployed Render backend |
+| `VITE_WS_URL` | **Yes** | `wss://brandguard-api-np6g.onrender.com` | WSS base URL for persistent real-time WebSockets |
 
 #### Backend (`Render Web Service > Environment`)
 
