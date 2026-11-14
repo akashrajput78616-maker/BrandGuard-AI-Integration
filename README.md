@@ -72,7 +72,7 @@ flowchart TD
 
 ---
 
-## ✨ Round 3 Completed Features
+## ✨ Round 2 Completed Features
 
 ### Feature 1: RAG-Powered Knowledge Base & Document Ingestion
 * **Document Ingestion:** Drag-and-drop ingestion of enterprise brand guideline documents in **PDF** (`pypdf`) and **DOCX** (`python-docx`).

@@ -52,7 +52,7 @@ export default function SubmissionPage({ goTo }) {
         <div className="sub-hero-glow" />
         <motion.div className="sub-hero-content" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <div className="sub-hero-badge">
-            <Award size={14} /> INKLOOM AI HACKATHON — ROUND 3 COMPLETE
+            <Award size={14} /> INKLOOM AI HACKATHON — ROUND 2 DELIVERABLES
           </div>
 
           <h1>
@@ -322,7 +322,7 @@ export default function SubmissionPage({ goTo }) {
             ]}
           />
           <TimelineItem
-            round="ROUND 3"
+            round="ROUND 2"
             title="Enterprise Scaling & Multi-Modal Governance"
             active
             items={[
@@ -353,12 +353,12 @@ export default function SubmissionPage({ goTo }) {
         </div>
       </section>
 
-      {/* ─── Round 3 Improvements ─── */}
+      {/* ─── Round 2 Improvements ─── */}
       <section className="section sub-r3-section">
         <div className="container">
           <div className="sub-section-header">
             <span className="kicker light">ALL THREE ROADMAP FEATURES DELIVERED</span>
-            <h2>Round 3 <span>Completed Deliverables</span></h2>
+            <h2>Round 2 <span>Completed Deliverables</span></h2>
             <p>Three production-ready features significantly elevating BrandGuard from prototype to enterprise-ready platform.</p>
 
           </div>

@@ -312,7 +312,7 @@ class ReviewResponse(BaseModel):
 @app.get("/")
 def home():
     return {
-        "message": "BrandGuard AI API (Round 3) is running",
+        "message": "BrandGuard AI API (Round 2) is running",
         "docs": "/docs",
         "version": "3.0",
         "health": "/health",
