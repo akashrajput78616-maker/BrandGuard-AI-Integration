@@ -123,6 +123,14 @@ export function AuthProvider({ children }) {
   );
 }
 
+export function getAuthToken() {
+  try {
+    return typeof window !== 'undefined' ? localStorage.getItem('bg_auth_token') || '' : '';
+  } catch {
+    return '';
+  }
+}
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
