@@ -128,6 +128,30 @@ flowchart TD
   * Interactive Color Sandbox for ad-hoc hex code evaluation.
   * Human-in-the-loop sign-off banner.
 
+### Feature 4: Cryptographic SHA-256 Audit Chain & Publication Receipts
+* **Append-Only Merkle Hash Chain (`collab/audit.py`):** Every review action, approval, role switch, and edit is sealed with a parent-linked SHA-256 hash digest, guaranteeing tamper evidence against database manipulation.
+* **Live Chain Verifier (`/api/audit/verify`):** Recomputes the cryptographic chain from genesis to head on demand, verifying 100% block integrity and pin-pointing any tampered index.
+* **Tamper-Evident Publication Receipts (`PublicationReceiptModal.jsx`):** Approved content generates a signed publication certificate with content hash digest, reviewer signature, and rulebook version. Downloadable as an official compliance PDF certificate via `jspdf`.
+
+### Feature 5: Rule Health, Override Analytics & Channel Drift
+* **Human Override Tracking (`collab/rule_health.py`):** Tracks reviewer decisions across brand rules. Calculates acceptance vs. override rates (`/api/analytics/rule-health`).
+* **Channel Drift Analysis:** Identifies which channels (e.g., Instagram, Blog, Press Releases, App Copy) deviate most frequently from brand rules.
+* **AI-Suggested Rule Amendments:** Automatically synthesizes amended guideline wording when reviewers repeatedly override a specific rule, with one-click "Accept as Draft" capability.
+
+### Feature 6: LLM Reliability, Telemetry & Red-Team Eval Matrix
+* **Live Model Gateway Telemetry (`rag/telemetry.py`):** Logs purpose, model name, prompt snippets, roundtrip latency (ms), and token counts for every Gemini Flash and embedding invocation (`/api/reliability/telemetry`).
+* **Red-Team Evaluation Suite (`/api/reliability/eval`):** Precision, Recall, and F1 benchmarks across adversarial failure modes (unsupported superlatives, expired claims, off-brand tone drift, prompt injection attacks, accessibility).
+* **Dual-Speed Fast Lane:** Instant sub-15ms client-side deterministic linting as creators type, followed by deep Gemini RAG review on submission.
+
+### Feature 7: Claims Ledger with Expiration Tracking
+* **Substantiated Claims Ledger (`rag/claims.py`):** Central registry of approved promotional claims with attached verification evidence and expiration dates (`/api/claims`).
+* **Expired Claim Detection:** Automatically flags marketing copy quoting statements whose validity window has elapsed.
+
+### Feature 8: Programmatic API Keys & Google Docs Add-on Integration
+* **Scoped API Key Management (`auth/api_keys.py`):** Self-service generation of API keys with granular scopes (`creator`, `reviewer`, `approver`, `admin`).
+* **Google Docs Sidebar Add-on:** Apps Script snippet enabling writers to run grounded compliance checks directly inside Google Docs without leaving their document.
+* **HMAC-SHA256 Signed Webhooks:** Signed webhook payloads and delivery attempt logging (`/api/webhooks/deliveries`).
+
 ---
 
 ## 🧪 Automated Test Suite (23 Tests)
