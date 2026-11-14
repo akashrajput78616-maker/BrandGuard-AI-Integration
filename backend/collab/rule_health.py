@@ -181,3 +181,4 @@ class RuleHealthStore:
 
 
 rule_health_store = RuleHealthStore()
+

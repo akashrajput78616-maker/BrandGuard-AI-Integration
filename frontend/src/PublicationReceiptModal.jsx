@@ -183,3 +183,4 @@ export default function PublicationReceiptModal({ draft, onClose }) {
     </div>
   );
 }
+

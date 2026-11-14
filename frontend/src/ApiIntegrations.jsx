@@ -287,3 +287,4 @@ function checkBrandCompliance() {
     </div>
   );
 }
+
