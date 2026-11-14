@@ -1,42 +1,1219 @@
+import React, { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ShieldCheck, ArrowRight, ArrowUpRight, Check, AlertTriangle, FileText,
+  LayoutDashboard, BookOpen, ScanSearch, ChartNoAxesCombined, History, Settings,
+  Sun, Moon, Menu, X, Upload, Plus, Search, CheckCircle2, MessageSquare, Lock,
+  Eye, Users, ChevronRight, Download, RefreshCw, Sparkles, Shield, Info,
+  Image as ImageIcon, Type, Palette, Accessibility, SlidersHorizontal, Clock,
+  ExternalLink, Trash2, Award, Activity, Cpu, Key, FileCheck2, Zap, LogOut,
+  Minus, FilePlus2, Layers, CheckCheck
+} from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { jsPDF } from 'jspdf';
+
+import './brandsentinel.css';
+import './style.css';
+import './submission.css';
+import './rag.css';
+import './collab.css';
+import './vision.css';
+
 import AIReviewPanel from './AIReviewPanel.jsx';
 import SubmissionPage from './SubmissionPage.jsx';
 import KnowledgeBaseRAG from './KnowledgeBaseRAG.jsx';
 import CollaborativeWorkspace from './CollaborativeWorkspace.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
-import './rag.css';
-import './collab.css';
 import VisualGovernanceStudio from './VisualGovernanceStudio.jsx';
-import './vision.css';
 import RuleHealthDashboard from './RuleHealthDashboard.jsx';
 import ReliabilityDashboard from './ReliabilityDashboard.jsx';
 import ApiIntegrations from './ApiIntegrations.jsx';
 import ClaimsLedger from './ClaimsLedger.jsx';
 import AuditChainView from './AuditChainView.jsx';
 import PublicationReceiptModal from './PublicationReceiptModal.jsx';
-import React,{useState,useEffect} from 'react';import{createRoot}from'react-dom/client';import{motion,AnimatePresence}from'framer-motion';import{ShieldCheck,ArrowRight,ArrowUpRight,Check,AlertTriangle,FileText,LayoutDashboard,BookOpen,ScanSearch,ChartNoAxesCombined,History,Settings,Sun,Moon,Menu,X,Upload,Plus,Search,CheckCircle2,MessageSquare,Lock,Eye,Users,ChevronRight,Download,RefreshCw,Sparkles,Shield,Info,Image as ImageIcon,Type,Palette,Accessibility,SlidersHorizontal,Clock,ExternalLink,Trash2,Award,Activity,Cpu,Key,FileCheck2,Zap}from'lucide-react';import{ResponsiveContainer,BarChart,Bar,XAxis,YAxis,Tooltip,CartesianGrid,PieChart,Pie,Cell}from'recharts';import{jsPDF}from'jspdf';import './style.css';import './submission.css';
-const initialRules=[{id:'claims',title:'Claims Policy §3.2',category:'Claims',body:'Do not make absolute superiority or guaranteed data-loss claims without a published, approved substantiation source.'},{id:'terms',title:'Terminology Guide §2.1',category:'Terminology',body:'Use “cloud backup” rather than “cloud storage thing”. Refer to the product as Acme CloudSync.'},{id:'tone',title:'Voice & Tone §1.4',category:'Tone',body:'Use confident, clear, helpful language. Avoid aggressive hype, shouting and excessive exclamation marks.'},{id:'access',title:'Accessibility Standard §4.1',category:'Accessibility',body:'All informative images must have meaningful alternative text. Use descriptive headings and readable contrast.'},{id:'facts',title:'Approved Facts §2.4',category:'Facts',body:'Acme CloudSync supports encrypted backups and scheduled syncing. Do not imply unlimited storage or guaranteed recovery.'}];
-const drafts=[{id:1,title:'Product launch announcement',team:'Marketing',status:'In review',content:"Acme CloudSync is the world's fastest backup tool and guarantees zero data loss.",alt:'',type:'text'},{id:2,title:'Social campaign / October',team:'Social',status:'Draft',content:'STOP EVERYTHING!!! Our cloud storage thing is literally the BEST thing EVER!!!',alt:'',type:'text'},{id:3,title:'Feature overview',team:'Product',status:'Changes requested',content:'Acme CloudSync gives every customer unlimited storage and guaranteed recovery. Back up your work with confidence.',alt:'',type:'text'},{id:4,title:'Homepage hero graphic',team:'Design',status:'Draft',content:'Discover a smarter way to protect your files with Acme CloudSync.',alt:'',type:'image'}];
-const examples=[{title:'Tone & language',before:'STOP EVERYTHING!!! The BEST backup EVER!!!',after:'Meet a simpler way to back up your work.'},{title:'Terminology',before:'Our cloud storage thing keeps files safe.',after:'Our cloud backup helps protect your files.'},{title:'Facts & messaging',before:'All plans include unlimited storage.',after:'Explore available storage options for your plan.'},{title:'Promotional claims',before:'Guaranteed zero data loss.',after:'Protect important files with encrypted backups.'},{title:'Visual consistency',before:'Use an unapproved neon logo variation.',after:'Use the approved teal logo with clear space.'},{title:'Accessibility',before:'Image without alternative text.',after:'Alt: Dashboard showing backup status.'}];
-const icons=[Type,BookOpen,ShieldCheck,Sparkles,Palette,Accessibility];
-function detect(content,rules,alt='',isImage=false){let found=[];const add=(id,type,severity,phrase,why,fix,confidence)=>{let rule=rules.find(r=>r.id===id);found.push({id:`${id}-${found.length}`,ruleId:id,type,severity,phrase,why,fix,confidence,source:rule?.title||null,status:'open',comments:[]})};if(/world.s fastest|guarantees? zero data loss|best (thing|backup)|guaranteed recovery|unlimited storage/i.test(content)){let phrase=content.match(/world.s fastest backup tool and guarantees zero data loss|guarantees? zero data loss|world.s fastest|BEST thing EVER|guaranteed recovery|unlimited storage/i)?.[0]||'unsupported claim';add('claims','Unsupported claim','High',phrase,'Absolute performance or recovery claims need approved supporting evidence.',/fastest|zero data loss/i.test(phrase)?'backs up large files quickly. See our benchmark report for details.':'offers encrypted backups and scheduled syncing.',92)}if(/cloud storage thing/i.test(content))add('terms','Non-preferred terminology','Medium','cloud storage thing','Use the approved product-category term.','cloud backup',99);if(/STOP EVERYTHING|BEST thing EVER|!!!|literally/i.test(content))add('tone','Off-brand tone','Medium',content.match(/STOP EVERYTHING!!!|BEST thing EVER!!!|!!!|literally/i)?.[0]||'!!!','This phrasing conflicts with the clear, helpful brand voice.','Discover an easier way to protect your files.',88);if(isImage&&!alt.trim())add('access','Missing alt text','High','Image upload','Informative images require meaningful alternative text.','Describe the important information shown in the image.',100);return found}
-const store=(key,def)=>{try{return JSON.parse(localStorage.getItem('bg-'+key))??def}catch{return def}};
-function App(){const[page,setPage]=useState('home'),[dark,setDark]=useState(false),[role,setRole]=useState('Creator'),[rules,setRules]=useState(()=>store('rules',initialRules)),[items,setItems]=useState(()=>store('drafts',drafts)),[selected,setSelected]=useState(1),[findings,setFindings]=useState(()=>store('findings',{})),[activity,setActivity]=useState(()=>store('activity',[{action:'Brand workspace created',by:'System',at:'Demo setup'}])),[example,setExample]=useState(0),[editRule,setEditRule]=useState(null),[query,setQuery]=useState(''),[reviewer,setReviewer]=useState('Reviewer'),[mask,setMask]=useState(true),[modal,setModal]=useState(null),[reason,setReason]=useState(''),[comment,setComment]=useState(''),[mobile,setMobile]=useState(false),[receiptModal,setReceiptModal]=useState(null);const current=items.find(d=>d.id===selected)||items[0];const flags=findings[selected]??detect(current.content,rules,current.alt,current.type==='image');const pending=flags.filter(f=>f.status==='open');const admin=role==='Admin';const log=(action)=>setActivity(a=>[{action,by:role,at:new Date().toLocaleString()},...a]);useEffect(()=>localStorage.setItem('bg-rules',JSON.stringify(rules)),[rules]);useEffect(()=>localStorage.setItem('bg-drafts',JSON.stringify(items)),[items]);useEffect(()=>localStorage.setItem('bg-findings',JSON.stringify(findings)),[findings]);useEffect(()=>localStorage.setItem('bg-activity',JSON.stringify(activity)),[activity]);const go=p=>{setPage(p);setMobile(false);window.scrollTo({top:0,behavior:'smooth'})};const updateItem=patch=>{setItems(a=>a.map(d=>d.id===selected?{...d,...patch}:d));setFindings(a=>{let n={...a};delete n[selected];return n})};const updateFlag=(id,patch)=>setFindings(a=>({...a,[selected]:flags.map(f=>f.id===id?{...f,...patch}:f)}));const accept=f=>{if(f.phrase==='Image upload'){setModal({kind:'alt',f});return}let replacement=f.fix;if(f.ruleId==='claims'&&/world.s fastest backup tool and guarantees zero data loss/i.test(current.content))replacement='backs up large files quickly. See our benchmark report for details.';let next=current.content.replace(f.phrase,replacement);updateItem({content:next,status:'Changes requested'});log(`Accepted suggested edit in ${current.title}`)};const approve=()=>{if(!['Reviewer','Manager','Admin'].includes(role)){setModal({kind:'notice',text:'Only Reviewer, Manager or Admin can approve content.'});return}if(pending.length){setModal({kind:'notice',text:'Resolve or dismiss all findings before approval.'});return}updateItem({status:'Approved',approved_by:role});log(`Approved ${current.title}`)};const exportPDF=()=>{let doc=new jsPDF();let y=20;doc.setFontSize(20);doc.text('BrandGuard Review Report',18,y);y+=13;doc.setFontSize(11);[current.title,`Status: ${current.status}`,`Reviewed by: ${role}`,`Date: ${new Date().toLocaleString()}`].forEach(s=>{doc.text(s,18,y);y+=8});flags.forEach((f,i)=>{if(y>255){doc.addPage();y=20}doc.setFontSize(12);doc.text(`${i+1}. ${f.type} (${f.severity})`,18,y);y+=7;doc.setFontSize(9);[f.why,`Source: ${f.source||'Needs human review'}`,`Decision: ${f.status}`].forEach(t=>{doc.splitTextToSize(t,170).forEach(line=>{doc.text(line,18,y);y+=5})});y+=5});doc.save('brandguard-review.pdf');log(`Exported report for ${current.title}`)};const nav=[['dashboard','Dashboard',LayoutDashboard],['knowledge','Knowledge base',BookOpen],['review','Review workspace',ScanSearch],['visual','Visual Studio',Palette],['rules','Rule health & drift',Activity],['reliability','Reliability & eval',Cpu],['integrations','API & webhooks',Key],['insights','Insights',ChartNoAxesCombined],['audit','Audit chain',History],['transparency','AI transparency',Shield],['submission','Submission',Award]];
-return <div className={dark?'app dark':'app'}><header className="topbar"><button className="brand" onClick={()=>go('home')} aria-label="BrandGuard home"><span className="brand-icon"><ShieldCheck size={23}/></span><span>brandguard<span className="brand-dot">.</span></span></button><nav className="toplinks"><button onClick={()=>go('home')}>Overview</button><button onClick={()=>go('rules')}>Rule Health</button><button onClick={()=>go('reliability')}>Reliability</button><button onClick={()=>go('integrations')}>API & Docs</button><button onClick={()=>go('visual')}>Visual Studio</button><button onClick={()=>go('submission')} style={{color:'#0fa3a3',fontWeight:800}}>📋 Submission</button></nav><div style={{display:'flex',alignItems:'center',gap:'8px'}} className="persona-box"><span style={{fontSize:'10px',fontWeight:800,letterSpacing:'0.06em',color:'#0fa3a3',display:'none'}} className="persona-tag">PERSONAS:</span><div style={{display:'flex',gap:'4px',background:'rgba(15,163,163,0.08)',padding:'3px 6px',borderRadius:'16px'}}>{[['Creator','Maya (Creator)'],['Reviewer','Dev (Reviewer)'],['Admin','Ravi (Admin)']].map(([rKey,rLabel])=><button key={rKey} onClick={()=>{setRole(rKey);log(`Persona switched to ${rLabel}`)}} style={{border:'none',borderRadius:'12px',padding:'2px 8px',fontSize:'11px',cursor:'pointer',fontWeight:role===rKey?700:500,background:role===rKey?'#0fa3a3':'transparent',color:role===rKey?'#fff':'inherit'}}>{rLabel}</button>)}</div></div><div className="topactions"><button className="iconbtn" aria-label="Toggle dark mode" onClick={()=>setDark(!dark)}>{dark?<Sun size={19}/>:<Moon size={19}/>}</button><button className="btn primary small" onClick={()=>go('review')}>Open workspace <ArrowUpRight size={16}/></button><button className="iconbtn hamburger" onClick={()=>setMobile(!mobile)} aria-label="Open menu">{mobile?<X/>:<Menu/>}</button></div></header>{mobile&&<div className="mobilemenu">{[['home','Home'],...nav.map(x=>[x[0],x[1]])].map(([id,label])=><button onClick={()=>go(id)} key={id}>{label}</button>)}</div>}
 
-{page==='home'?<main><section className="hero container"><div className="hero-copy"><div className="eyebrow"><span className="pulse"/> THE BRAND GATE YOU CAN AUDIT <ArrowUpRight size={13}/></div><motion.h1 initial={{opacity:0,y:20}} animate={{opacity:1,y:0}}>Brand consistency,<br/><span className="gradient-text"><em>before publication.</em></span></motion.h1><p className="hero-sub">Evidence-backed findings, human approval, and an immutable cryptographic audit trail before content goes live.</p><div className="hero-actions"><button className="btn primary" onClick={()=>go('review')}>Try live demo <ArrowRight size={16}/></button><button className="btn secondary" onClick={()=>go('rules')}>Rule health & drift <ArrowUpRight size={15}/></button></div><div className="hero-proof"><span className="avatars"><b>M</b><b>D</b><b>R</b></span><span>The two-minute path: Creator, Reviewer, Approver.</span></div></div><motion.div className="hero-visual" initial={{opacity:0,x:25}} animate={{opacity:1,x:0}} transition={{delay:.15}}><div className="visual-glow"/><div className="floating-chip topchip"><ShieldCheck size={15}/> Brand rules compiled <Check size={13}/></div><div className="mock-window"><div className="mock-header"><span className="dots"><i/><i/><i/></span><span>Campaign draft / launch-copy.md</span><span className="mini-avatar">AC</span></div><div className="mock-body"><div className="mock-label"><FileText size={15}/> EVIDENCE GATE <span className="tag subtle">SHA-256 SEALED</span></div><h3>Meet the next generation of backup.</h3><p>Acme CloudSync is the <mark className="flag high">world's fastest <span>HIGH</span></mark> backup tool and <mark className="flag high delay">guarantees zero data loss <span>HIGH</span></mark> for every team.</p><p>Keep your important work protected, wherever you are.</p><div className="mock-divider"/><div className="mock-finding"><span className="severity-icon"><AlertTriangle size={16}/></span><div><strong>Unsupported promotional claim</strong><small>Claims Policy §3.2 · 92% confidence</small><p>Absolute performance claims require verified evidence.</p></div><span className="tag red">High</span></div><div className="mock-suggestion"><Sparkles size={15}/> Suggested: “Backs up large files quickly.”</div></div></div><div className="floating-chip bottomchip"><span className="check-round"><Check size={13}/></span> Human approval required</div></motion.div></section><section className="trust-strip"><div className="container trust-inner"><span>THE AUDITABLE BRAND GATE</span><span><ShieldCheck size={16}/> Evidence-backed</span><span><Users size={16}/> Human approval</span><span><Lock size={16}/> Cryptographic chain</span><span><History size={16}/> Official PDF receipts</span></div></section><section className="section container" id="features"><div className="section-intro"><span className="kicker">THE PROBLEM</span><h2>Small mistakes.<br/><span className="muted">Big brand consequences.</span></h2><p>Your brand deserves more than a spellchecker. Every message should be accurate, consistent and unmistakably yours.</p></div><div className="grid4">{[[AlertTriangle,'Incorrect claims','Catch exaggerated promises and unsupported statements before they damage trust.','red'],[Clock,'Outdated information','Keep every message aligned with your latest approved facts.','amber'],[Type,'Inconsistent language','One consistent voice, even across dozens of creators.','purple'],[ImageIcon,'Off-brand visuals','Protect your visual identity and build accessible experiences.','teal']].map(([Icon,title,desc,color])=><motion.div whileHover={{y:-5}} className="feature-card" key={title}><span className={'feature-icon '+color}><Icon size={22}/></span><h3>{title}</h3><p>{desc}</p><ArrowUpRight className="card-arrow" size={18}/></motion.div>)}</div></section><section className="section soft" id="how"><div className="container"><div className="center-heading"><span className="kicker">HOW IT WORKS</span><h2>From first draft to <span className="gradient-text">full confidence.</span></h2><p>A transparent process that keeps humans in control at every step.</p></div><div className="steps">{[['01','Build your knowledge base','Add approved rules, facts and assets.'],['02','Submit content','Paste copy or upload documents and images.'],['03','Automated review','Check deterministic rules first.'],['04','Explain & suggest','See citations and intent-preserving fixes.'],['05','Human decision','Review, edit, dismiss or request changes.'],['06','Approve & audit','Record the final decision and its history.']].map(([n,t,d])=><div className="step" key={n}><span className="step-num">{n}</span><h3>{t}</h3><p>{d}</p></div>)}</div><div className="loop"><RefreshCw size={17}/> INSIGHTS LOOP — Turn recurring findings into clearer guidelines</div></div></section><section className="section container"><div className="section-intro"><span className="kicker">WHAT WE DETECT</span><h2>Every detail, <span className="muted">considered.</span></h2><p>Explore the checks that help protect your brand. Select a capability to see it in action.</p></div><div className="cap-layout"><div className="cap-grid">{examples.map((e,i)=>{let Icon=icons[i];return <button key={e.title} onClick={()=>setExample(i)} className={'cap-tile '+(example===i?'active':'')}><Icon size={22}/><span>{e.title}</span><ChevronRight size={17}/></button>})}</div><div className="example-panel"><div className="panel-top"><span className="kicker">LIVE EXAMPLE</span><span className="tag green"><Check size={13}/> Suggested improvement</span></div><h3>{examples[example].title}</h3><div className="diff"><small>BEFORE</small><p className="before">{examples[example].before}</p></div><div className="diff"><small>AFTER</small><p className="after">{examples[example].after}</p></div><div className="example-foot"><ShieldCheck size={16}/> Every suggestion stays under human control.</div></div></div></section><section className="section navy-section"><div className="container"><div className="center-heading"><span className="kicker light">THE BRANDGUARD DIFFERENCE</span><h2>Intelligence with <span>accountability.</span></h2></div><div className="grid3">{[[BookOpen,'Cite or abstain','Every finding points to a real approved rule. No source? We ask a human instead of inventing one.'],[Sparkles,'Preserve the intent','Useful suggestions that retain what the creator was trying to say, not generic rewrites.'],[ChartNoAxesCombined,'Improve the guidelines','Learn which rules confuse teams and where your knowledge base needs clarity.']].map(([Icon,t,d])=><div className="dark-card" key={t}><Icon size={27}/><h3>{t}</h3><p>{d}</p></div>)}</div></div></section><section className="section container"><div className="center-heading"><span className="kicker">BUILT FOR THE WHOLE TEAM</span><h2>Everyone has a role. <span className="muted">Everyone has clarity.</span></h2></div><div className="grid4 role-cards">{[['Creator','Write, submit and act on feedback.'],['Reviewer','Resolve findings and approve content.'],['Manager','Oversee teams, decisions and trends.'],['Brand Admin','Own the rules, facts and approved assets.']].map(([t,d],i)=><div className="role-card" key={t}><span className="role-index">0{i+1}</span><h3>{t}</h3><p>{d}</p></div>)}</div></section><section className="section soft"><div className="container responsible"><div><span className="kicker">RESPONSIBLE BY DESIGN</span><h2>Powerful AI.<br/><span className="gradient-text">Human judgment.</span></h2><p>Privacy, transparency and oversight aren't afterthoughts. They're the foundation.</p><button className="btn secondary" onClick={()=>go('transparency')}>Explore our approach <ArrowRight size={17}/></button></div><div className="responsible-list">{[[Lock,'Privacy & confidentiality','Mask sensitive values and minimise data shared.'],[Shield,'Security by design','Roles and access boundaries protect decisions.'],[Users,'Human oversight','No automatic publishing or silent overwrites.'],[Eye,'Clear AI disclosure','AI-generated findings and external services are labelled.']].map(([Icon,t,d])=><div key={t}><span><Icon size={21}/></span><div><h3>{t}</h3><p>{d}</p></div></div>)}</div></div></section><section className="cta-section container"><div className="cta"><span className="kicker light">YOUR BRAND. YOUR RULES.</span><h2>Make every word<br/>worth publishing.</h2><p>Start with a ready-to-explore Acme CloudSync workspace.</p><button className="btn white" onClick={()=>go('review')}>Explore the live demo <ArrowRight size={18}/></button><div className="cta-orb"/></div></section><footer><div className="container footer-inner"><div><div className="footer-brand"><ShieldCheck/> brandguard.</div><p>Clarity before content goes live.</p></div><div><button onClick={()=>go('review')}>Live demo</button><button onClick={()=>go('knowledge')}>Knowledge base</button><button onClick={()=>go('transparency')}>Responsible AI</button></div></div><div className="container footer-bottom">© 2026 BrandGuard · Built for the Inkloom AI Hackathon <span>Human-led. Always.</span></div></footer></main>:<div className="workspace"><aside className="sidebar"><div className="workspace-label">WORKSPACE</div><div className="org-card"><span className="org-logo">A</span><div><strong>Acme CloudSync</strong><small>Demo organisation</small></div><ChevronRight size={15}/></div><div className="side-label">GENERAL</div>{nav.map(([id,label,Icon])=><button className={'side-link '+(page===id?'selected':'')} key={id} onClick={()=>go(id)}><Icon size={18}/>{label}{id==='review'&&<span className="side-count">{items.filter(d=>d.status==='In review').length}</span>}</button>)}<div className="sidebar-bottom"><div className="sidebar-help"><Sparkles size={19}/><strong>Demo environment</strong><p>All content is sample data and stays in this browser.</p></div><label className="role-label" htmlFor="role">VIEW AS ROLE</label><select id="role" value={role} onChange={e=>setRole(e.target.value)}>{['Creator','Reviewer','Manager','Admin'].map(r=><option key={r}>{r}</option>)}</select><div className="user-pill"><span className="mini-avatar">{role[0]}</span><div><strong>Demo {role}</strong><small>{role} access</small></div></div></div></aside><main className="work-main"><div className="work-top"><span>Acme CloudSync <ChevronRight size={14}/> <strong>{nav.find(n=>n[0]===page)?.[1]}</strong></span><span className="demo-pill"><span className="pulse"/> Interactive prototype</span></div>{page==='dashboard'&&<div className="page-content"><div className="page-heading"><div><span className="kicker">YOUR WORKSPACE</span><h1>Good afternoon <span className="wave">✳</span></h1><p>Here's what needs your attention today.</p></div><button className="btn primary" onClick={()=>{let id=Date.now();setItems(a=>[{id,title:'Untitled draft',team:'Marketing',status:'Draft',content:'',alt:'',type:'text'},...a]);setSelected(id);go('review')}}><Plus size={17}/> New review</button></div><div className="stat-grid">{[['Total drafts',items.length,FileText,'purple'],['Awaiting review',items.filter(x=>x.status==='In review').length,Clock,'amber'],['Changes requested',items.filter(x=>x.status==='Changes requested').length,AlertTriangle,'red'],['Approved',items.filter(x=>x.status==='Approved').length,CheckCircle2,'green']].map(([t,v,Icon,c])=><div className="stat" key={t}><span className={'feature-icon '+c}><Icon size={19}/></span><small>{t}</small><strong>{v}</strong></div>)}</div><div className="section-head"><h2>Content pipeline</h2><button className="text-button" onClick={()=>go('review')}>Open review workspace <ArrowRight size={16}/></button></div><div className="data-card"><table><thead><tr><th>CONTENT</th><th>TEAM</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>{items.map(d=><tr key={d.id}><td><FileText size={16}/> {d.title}</td><td>{d.team}</td><td><span className={'status '+d.status.toLowerCase().replaceAll(' ','-')}>{d.status}</span></td><td><button className="text-button" onClick={()=>{setSelected(d.id);go('review')}}>Review <ArrowRight size={14}/></button></td></tr>)}</tbody></table></div><div className="section-head"><h2>Recent activity</h2></div><div className="data-card activity">{activity.slice(0,5).map((a,i)=><div key={i}><span className="activity-dot"/><div><strong>{a.action}</strong><small>{a.by} · {a.at}</small></div></div>)}</div></div>}
-{page==='review'&&<div className="page-content review-page"><div className="page-heading"><div><span className="kicker">CONTENT GOVERNANCE</span><h1>Review workspace</h1><p>Make every message accurate, consistent and on-brand.</p></div><div style={{display:'flex',gap:'8px'}}>{current.status==='Approved'&&<button className="btn primary" onClick={()=>setReceiptModal(current)} style={{background:'#0fa3a3',display:'flex',alignItems:'center',gap:'6px'}}><Award size={16}/> Official Receipt</button>}<button className="btn secondary" onClick={exportPDF}><Download size={17}/> Export report</button></div></div><div className="review-toolbar"><label>CONTENT <select value={selected} onChange={e=>setSelected(Number(e.target.value))}>{items.map(d=><option key={d.id} value={d.id}>{d.title}</option>)}</select></label><span className={'status '+current.status.toLowerCase().replaceAll(' ','-')}>{current.status}</span><span className="spacer"/><label>ASSIGNED TO <select value={reviewer} onChange={e=>{setReviewer(e.target.value);log(`Assigned ${current.title} to ${e.target.value}`)}}>{['Reviewer','Manager','Admin'].map(x=><option key={x}>{x}</option>)}</select></label></div><CollaborativeWorkspace draft={current} onUpdateContent={(text)=>updateItem({content:text})} onStatusChange={(stat)=>updateItem({status:stat})} /><AIReviewPanel /><div className="review-grid"><div className="editor-card"><div className="card-heading"><div><FileText size={17}/><strong>Content editor</strong></div><div style={{display:'flex',gap:'6px'}}><span className="tag subtle" style={{background:'#e0f2fe',color:'#0284c7',fontWeight:700,fontSize:'11px'}}>⚡ FAST LANE: {flags.length} LIVE CHECKS</span><span className="tag subtle">{current.type==='image'?'IMAGE':'TEXT'}</span></div></div><div className="editor-inner"><input className="draft-title" aria-label="Draft title" value={current.title} onChange={e=>updateItem({title:e.target.value})}/><div className="editor-meta">Draft content · {current.team}</div>{current.image&&<img className="uploaded-image" src={current.image} alt={current.alt||'Uploaded image preview'}/>}<textarea aria-label="Draft content" className="content-area" placeholder="Paste your draft content here..." value={current.content} onChange={e=>updateItem({content:e.target.value})}/>{flags.length>0&&<div className="inline-review"><span className="kicker">FLAGGED PHRASES</span><p>{current.content.split(new RegExp('('+flags.filter(f=>f.phrase!=='Image upload'&&f.phrase).map(f=>f.phrase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi')).map((part,i)=>{let f=flags.find(x=>x.phrase.toLowerCase()===part.toLowerCase());return f?<mark key={i} className={'inline-flag '+(f.severity==='High'?'high':'medium')}>{part}</mark>:<React.Fragment key={i}>{part}</React.Fragment>})}</p></div>}<div className="upload-row"><label className="upload-btn"><Upload size={16}/> Upload text or image<input type="file" accept=".txt,.md,image/*" hidden onChange={async e=>{let file=e.target.files?.[0];if(!file)return;if(file.type.startsWith('image/')){let reader=new FileReader();reader.onload=()=>updateItem({image:reader.result,type:'image'});reader.readAsDataURL(file)}else{updateItem({content:await file.text(),type:'text'})}log(`Imported ${file.name}`)}}/></label><span>TXT, MD, PNG, JPG supported</span></div>{current.type==='image'&&<label className="field-label">Image alt text<input value={current.alt} placeholder="Describe the image" onChange={e=>updateItem({alt:e.target.value})}/></label>}</div><div className="editor-footer"><span><Lock size={14}/> Your draft is never auto-published.</span><button className="btn primary small" onClick={()=>{setFindings(a=>({...a,[selected]:detect(current.content,rules,current.alt,current.type==='image')}));setItems(a=>a.map(d=>d.id===selected?{...d,status:'In review'}:d));log(`Reviewed ${current.title}`)}}><ScanSearch size={16}/> Run review</button></div></div><div className="findings-panel"><div className="card-heading"><div><ShieldCheck size={18}/><strong>Review findings</strong></div><span className="finding-count">{pending.length} open</span></div><div className="findings-summary"><span className="ai-tag"><Sparkles size={13}/> RULE-BASED DEMO ANALYSIS</span><p>{flags.length?`${flags.length} issue${flags.length===1?'':'s'} identified. Review each finding before approval.`:'No guideline violations detected in this draft.'}</p></div><div className="findings-list">{flags.length===0?<div className="empty"><CheckCircle2 size={30}/><h3>Looking good</h3><p>No matches against the current demo rules. Human review is still required.</p></div>:flags.map(f=><div className={'finding '+(f.status!=='open'?'resolved':'')} key={f.id}><div className="finding-top"><span className={'tag '+(f.severity==='High'?'red':'amber')}>{f.severity==='High'?<AlertTriangle size={12}/>:<Info size={12}/>} {f.severity}</span><span className="tag subtle">{f.status==='open'?'OPEN':f.status.toUpperCase()}</span></div><h3>{f.type}</h3><p>{f.why}</p><div className="source"><BookOpen size={14}/>{f.source?<button onClick={()=>{setEditRule(rules.find(r=>r.id===f.ruleId));go('knowledge')}}>{f.source} <ExternalLink size={12}/></button>:<strong>Needs human review — no source</strong>}</div><div className="confidence">Confidence <strong>{f.confidence}%</strong><div><span style={{width:f.confidence+'%'}}/></div></div><div className="suggestion"><small><Sparkles size={13}/> SUGGESTED FIX</small><div className="before">− {f.phrase}</div><div className="after">+ {f.fix}</div></div>{f.status==='open'&&<div className="finding-actions"><button onClick={()=>accept(f)}><Check size={14}/> Accept</button><button onClick={()=>setModal({kind:'edit',f})}>Edit</button><button onClick={()=>{setReason('');setModal({kind:'dismiss',f})}}>Dismiss</button></div>}<div className="comments">{f.comments?.map((c,i)=><p key={i}><MessageSquare size={13}/> {c}</p>)}<button onClick={()=>{setComment('');setModal({kind:'comment',f})}}><MessageSquare size={14}/> Add comment</button></div></div>)}</div><div className="approval-area"><div><strong>Human approval gate</strong><p>{pending.length?`${pending.length} open finding(s) must be resolved.`:'Ready for authorised human review.'}</p></div><div style={{display:'flex',gap:'8px'}}>{current.status==='Approved'&&<button className="btn secondary" onClick={()=>setReceiptModal(current)} style={{color:'#0fa3a3',borderColor:'#0fa3a3',display:'flex',alignItems:'center',gap:'6px'}}><Award size={15}/> View Receipt</button>}<button className="btn primary" onClick={approve} disabled={current.status==='Approved'}><CheckCircle2 size={16}/>{current.status==='Approved'?'Approved':'Approve content'}</button></div></div></div></div><div className="review-bottom"><div><h3>Accessibility checks</h3><p><Check size={16}/> Heading structure: manual verification required</p><p><Check size={16}/> Readability: {current.content.split(/\s+/).filter(Boolean).length} words</p><p><AlertTriangle size={16}/> Contrast: requires actual foreground/background colours</p><p><ImageIcon size={16}/> Alt text: {current.type==='image'?(current.alt?'Provided':'Missing'):'Not applicable'}</p></div><div><h3>Revision & decision history</h3>{activity.filter(a=>a.action.includes(current.title)||a.action.includes('edit')).slice(0,5).map((a,i)=><p key={i}><History size={15}/>{a.action} · {a.by}</p>)}<p><Info size={15}/> Decisions are recorded locally in this demo.</p></div></div></div>}
-{page==='knowledge'&&<div className="page-content"><KnowledgeBaseRAG tenantId="default-tenant" role={role} /><ClaimsLedger role={role} /><div className="section-head" style={{marginTop:'36px'}}><h2>Approved brand assets & quick rules</h2></div><div className="notice"><Lock size={17}/> Only Brand Admin can modify the knowledge base. Currently viewing as <strong>{role}</strong>.</div><div className="searchbox"><Search size={18}/><input placeholder="Search guidelines and policies..." value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="knowledge-grid">{rules.filter(r=>(r.title+' '+r.body).toLowerCase().includes(query.toLowerCase())).map(r=><div className="rule-card" id={'rule-'+r.id} key={r.id}><span className="tag subtle">{r.category}</span><h3>{r.title}</h3><p>{r.body}</p><div className="rule-footer"><span><BookOpen size={14}/> Approved source</span>{admin&&<button className="text-button" onClick={()=>setModal({kind:'rule',rule:r})}>Edit <ArrowRight size={14}/></button>}</div></div>)}</div><div className="section-head"><h2>Approved brand assets & facts</h2></div><div className="knowledge-grid"><div className="rule-card"><span className="tag subtle">PALETTE</span><h3>Core brand colours</h3><div className="swatches">{['#0B1F3A','#0FA3A3','#E8962E','#6B5BD6'].map(c=><span key={c} style={{background:c}} title={c}/>)}</div><p>Use approved colours consistently across assets.</p></div><div className="rule-card"><span className="tag subtle">APPROVED CLAIMS</span><h3>Verified messaging</h3><p>“Acme CloudSync supports encrypted backups and scheduled syncing.”</p></div><div className="rule-card"><span className="tag subtle">TERMINOLOGY</span><h3>Preferred terms</h3><p><strong>Use:</strong> cloud backup<br/><strong>Avoid:</strong> cloud storage thing</p></div></div>{admin&&<div className="import-box"><h3>Import guidelines</h3><p>Import a TXT file as a new rule. PDF and DOCX parsing require backend integration in production.</p><label className="btn secondary"><Upload size={16}/> Import TXT<input hidden type="file" accept=".txt" onChange={async e=>{let f=e.target.files?.[0];if(f){const body=await f.text();setRules(a=>[...a,{id:'custom-'+Date.now(),title:f.name,category:'Imported',body}]);log(`Imported guideline ${f.name}`)}}}/></label></div>}</div>}
-{page==='visual'&&<div className="page-content" style={{maxWidth:'100%'}}><VisualGovernanceStudio /></div>}
-{page==='rules'&&<div className="page-content"><RuleHealthDashboard /></div>}
-{page==='reliability'&&<div className="page-content"><ReliabilityDashboard /></div>}
-{page==='integrations'&&<div className="page-content"><ApiIntegrations /></div>}
-{page==='insights'&&<div className="page-content"><div className="page-heading"><div><span className="kicker">CONTINUOUS IMPROVEMENT</span><h1>Brand insights</h1><p>Patterns that help teams and guidelines get better.</p></div></div>
-<div className="stat-grid">{[['Drafts',items.length,FileText,'purple'],['Findings',items.reduce((n,d)=>n+(findings[d.id]??detect(d.content,rules,d.alt,d.type==='image')).length,0),AlertTriangle,'amber'],['Approvals',items.filter(d=>d.status==='Approved').length,CheckCircle2,'green'],['Active rules',rules.length,BookOpen,'teal']].map(([t,v,I,c])=><div className="stat" key={t}><span className={'feature-icon '+c}><I size={19}/></span><small>{t}</small><strong>{v}</strong></div>)}</div><div className="charts"><div className="chart-card"><h3>Issues by type</h3><ResponsiveContainer width="100%" height={280}><BarChart data={['Unsupported claim','Non-preferred terminology','Off-brand tone','Missing alt text'].map(t=>({name:t.split(' ')[0],count:items.reduce((n,d)=>n+(findings[d.id]??detect(d.content,rules,d.alt,d.type==='image')).filter(f=>f.type===t).length,0)}))}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name"/><YAxis allowDecimals={false}/><Tooltip/><Bar dataKey="count" fill="#0FA3A3" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></div><div className="chart-card"><h3>Draft status</h3><ResponsiveContainer width="100%" height={280}><PieChart><Pie data={['Draft','In review','Changes requested','Approved'].map((name,i)=>({name,value:items.filter(d=>d.status===name).length}))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={92} label>{['#6B5BD6','#E8962E','#D64545','#2E9E6B'].map((c,i)=><Cell key={i} fill={c}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer></div></div><div className="section-head"><h2>Guidelines that may be unclear</h2></div><div className="data-card padded"><p>Rules that receive repeated dismissals deserve a second look.</p>{rules.filter(r=>Object.values(findings).flat().some(f=>f.ruleId===r.id&&f.status==='dismissed')).map(r=><div className="insight-row" key={r.id}><AlertTriangle size={16}/>{r.title}<span>Review wording</span></div>)}{!Object.values(findings).flat().some(f=>f.status==='dismissed')&&<div className="empty"><CheckCircle2 size={25}/><p>No dismissed rules yet.</p></div>}</div></div>}
-{page==='audit'&&<div className="page-content"><AuditChainView /></div>}
-{page==='submission'&&<div className="page-content" style={{padding:0,maxWidth:'100%'}}><SubmissionPage goTo={go}/></div>}
-{page==='transparency'&&<div className="page-content"><div className="page-heading"><div><span className="kicker">RESPONSIBLE AI</span><h1>Transparent by design</h1><p>Know what runs, what gets shared and who makes the decision.</p></div></div><div className="transparency-grid">{[[ShieldCheck,'Review engine','Deterministic browser-side checks. No external AI model is called in this demo.'],[BookOpen,'Grounding','Findings are matched against locally stored approved rules. Unknown cases require human review.'],[Lock,'Data handling','Demo drafts and decisions are stored in browser localStorage. No server-side encryption or tenant isolation is implemented.'],[Users,'Human control','No auto-publishing. Suggestions only change content after a person accepts them.'],[Eye,'External services','Google Fonts may load font files. No content is sent to an LLM or other analysis service.'],[AlertTriangle,'Production readiness','Authentication, tenant isolation, RAG, document extraction and prompt-injection protections require a secure backend.']].map(([I,t,d])=><div className="rule-card" key={t}><span className="feature-icon teal"><I size={20}/></span><h3>{t}</h3><p>{d}</p></div>)}</div><div className="settings-card"><div><h3>Mask sensitive terms</h3><p>Preview setting for future AI integrations. No data leaves this demo's review engine.</p></div><button className={'toggle '+(mask?'on':'')} role="switch" aria-checked={mask} onClick={()=>setMask(!mask)}><span/></button></div><div className="notice"><Info size={18}/> AI-generated findings must be labelled. External AI services must be disclosed. This prototype uses no generative AI at runtime.</div></div>}</main></div>}
-{receiptModal&&<PublicationReceiptModal draft={receiptModal} onClose={()=>setReceiptModal(null)}/>}
-{modal&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(null)}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-heading"><h2>{modal.kind==='dismiss'?'Dismiss finding':modal.kind==='edit'?'Edit suggestion':modal.kind==='comment'?'Add comment':modal.kind==='rule'?'Brand guideline':modal.kind==='alt'?'Add alternative text':'Notice'}</h2><button className="iconbtn" onClick={()=>setModal(null)} aria-label="Close"><X size={19}/></button></div>{modal.kind==='notice'?<p>{modal.text}</p>:modal.kind==='rule'?<form onSubmit={e=>{e.preventDefault();let data=new FormData(e.currentTarget);let r={id:modal.rule?.id||'custom-'+Date.now(),title:data.get('title'),category:data.get('category'),body:data.get('body')};setRules(a=>modal.rule?a.map(x=>x.id===r.id?r:x):[...a,r]);log(`${modal.rule?'Updated':'Added'} guideline ${r.title}`);setModal(null)}}><label className="field-label">Title<input name="title" required defaultValue={modal.rule?.title}/></label><label className="field-label">Category<input name="category" required defaultValue={modal.rule?.category||'General'}/></label><label className="field-label">Approved guideline text<textarea name="body" required defaultValue={modal.rule?.body}/></label><button className="btn primary" type="submit">Save guideline</button></form>:<form onSubmit={e=>{e.preventDefault();if(modal.kind==='dismiss'){if(!reason.trim())return;updateFlag(modal.f.id,{status:'dismissed',reason});log(`Dismissed ${modal.f.type}: ${reason}`)}if(modal.kind==='edit'){let next=current.content.replace(modal.f.phrase,reason);updateItem({content:next,status:'Changes requested'});log(`Edited ${modal.f.type} in ${current.title}`)}if(modal.kind==='comment'){updateFlag(modal.f.id,{comments:[...(modal.f.comments||[]),`${role}: ${comment}`]});log(`Commented on ${modal.f.type}`)}if(modal.kind==='alt'){updateItem({alt:reason});log(`Added alt text to ${current.title}`)}setModal(null)}}><label className="field-label">{modal.kind==='dismiss'?'Reason (required)':modal.kind==='edit'?'Replacement text':modal.kind==='alt'?'Meaningful image description':'Your comment'}<textarea required value={modal.kind==='comment'?comment:reason} onChange={e=>modal.kind==='comment'?setComment(e.target.value):setReason(e.target.value)} placeholder="Enter details..."/></label><button className="btn primary" type="submit">Confirm decision</button></form>}</div></div>}</div>}
+// BrandSentinel Logo Component
+function BrandLogo({ compact = false }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex size-7 items-center justify-center border border-foreground/30 bg-foreground font-serif text-[13px] font-medium text-background">
+        B
+      </span>
+      <span className="font-serif text-[19px] tracking-tight text-foreground">
+        BrandSentinel
+      </span>
+      {!compact && (
+        <span className="ml-1 hidden border border-border px-1 py-[1px] font-mono text-[8px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
+          R2
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Personas
+const personas = [
+  {
+    role: 'creator',
+    name: 'Maya Rao',
+    title: 'Creator',
+    line: 'Write the caption. Run the gate.',
+    detail: 'Submits the Lumora launch caption, sees the fast lane as she types, and waits for the report.'
+  },
+  {
+    role: 'reviewer',
+    name: 'Dev Kapoor',
+    title: 'Reviewer',
+    line: 'Work the findings.',
+    detail: 'Accepts, edits or rejects each finding with a reason. Can send the version back for revision.'
+  },
+  {
+    role: 'approver',
+    name: 'Ines Alvarez',
+    title: 'Approver',
+    line: 'Sign it off, or stop it.',
+    detail: 'Approves or rejects. Claims findings can be escalated to Legal. Exports the review receipt.'
+  },
+  {
+    role: 'admin',
+    name: 'Ravi Shah',
+    title: 'Admin',
+    line: 'Own the rulebook.',
+    detail: 'Compiles a guideline document into typed rules, edits the proposal and publishes it.'
+  }
+];
+
+const sixIdeas = [
+  {
+    n: "01",
+    title: "Brand Pack Compiler",
+    body: "Guideline documents become typed rules with source excerpts. An admin reviews, edits and publishes. Nothing enters the rulebook by itself."
+  },
+  {
+    n: "02",
+    title: "Two-lane review",
+    body: "Deterministic checks run in under a second. Five specialist reviewers read for judgment. Model calls only happen where reading is required."
+  },
+  {
+    n: "03",
+    title: "Evidence or silence",
+    body: "A finding survives only if its quoted span is verbatim, its rule exists, and its guideline excerpt is from the rulebook. Low confidence goes to Needs human."
+  },
+  {
+    n: "04",
+    title: "Claim Ledger",
+    body: "Approved claims carry an owner, evidence and expiry. Copy is labelled Supported, Unsupported, Expired or Contradicts, and the nearest approved wording is proposed."
+  },
+  {
+    n: "05",
+    title: "Human decisions",
+    body: "Accept, edit or reject per finding, with comments and a reason on rejection. Fixes are tracked diffs with an intent-preservation score. Nothing auto-applies."
+  },
+  {
+    n: "06",
+    title: "Receipt and audit",
+    body: "Every decision is hash-chained. An approver signs off and exports a receipt with the version hash, findings, models used and the AI disclosure statement."
+  }
+];
+
+const evidenceChecks = [
+  "The quoted span exists verbatim in the submitted content",
+  "The rule_id is published in the current rulebook",
+  "The guideline excerpt is a real quote from the rulebook",
+  "Claim findings reference an id that exists in the Claim Ledger"
+];
+
+const initialRules = [
+  { id: 'R-TERM-01', title: 'Terminology & messaging · R-TERM-01', category: 'terminology', body: 'Always write the full product name “Lumora Glow Serum” on first mention.' },
+  { id: 'R-CLM-03', title: 'Claims Policy · R-CLM-03', category: 'claims', body: 'Clinical superiority and speed claims require an approved trial registry and citation.' },
+  { id: 'R-TONE-02', title: 'Voice & Tone · R-TONE-02', category: 'tone', body: 'Avoid hyperbolic hype and sensational words like MIRACLE, LIFE-CHANGING, or UNBELIEVABLE.' },
+  { id: 'R-A11Y-01', title: 'Accessibility Standard · R-A11Y-01', category: 'accessibility', body: 'All text overlays and informative graphics must maintain at least 4.5:1 contrast.' },
+  { id: 'R-VIS-04', title: 'Visual & Palette · R-VIS-04', category: 'visual', body: 'Ensure brand palette compliance. Avoid deprecated hot-pink accents (#FF2E93).' }
+];
+
+const initialDrafts = [
+  {
+    id: 1,
+    title: 'Lumora Glow Serum — Launch caption',
+    channel: 'Instagram',
+    version: '3',
+    creatorName: 'Maya Rao',
+    status: 'In review',
+    updatedAt: '12m ago',
+    findingCount: 4,
+    legalFlag: true,
+    content: "Glow Serum is here — and it's a MIRACLE for tired skin. Clinically proven to remove wrinkles in 7 days. Get yours before it sells out!!",
+    alt: 'High-contrast product visual with serum bottle',
+    type: 'text'
+  },
+  {
+    id: 2,
+    title: 'Email newsletter / Founder announcement',
+    channel: 'Email',
+    version: '1',
+    creatorName: 'Maya Rao',
+    status: 'Draft',
+    updatedAt: '2h ago',
+    findingCount: 2,
+    legalFlag: false,
+    content: "Lumora Glow Serum is crafted for radiant skin. Backed by organic cold-pressed botanicals.",
+    alt: '',
+    type: 'text'
+  },
+  {
+    id: 3,
+    title: 'Paid ad specimen / TikTok cut',
+    channel: 'Paid Social',
+    version: '2',
+    creatorName: 'Maya Rao',
+    status: 'Changes requested',
+    updatedAt: 'Yesterday',
+    findingCount: 3,
+    legalFlag: false,
+    content: "Our cloud storage thing is literally the best formula ever invented.",
+    alt: '',
+    type: 'text'
+  }
+];
+
+function detectFindings(text, rules) {
+  const list = [];
+  if (/Glow Serum/i.test(text) && !/Lumora Glow Serum/i.test(text)) {
+    list.push({
+      id: 'f-1',
+      ruleId: 'R-TERM-01',
+      type: 'Terminology & messaging · R-TERM-01',
+      severity: 'Critical',
+      phrase: 'Glow Serum',
+      why: '“Glow Serum” drops the brand name. The rule requires the full product name on first mention.',
+      excerpt: '“Always write the full product name ‘Lumora Glow Serum’ on first mention.”',
+      fix: 'Lumora Glow Serum',
+      confidence: 96,
+      intentScore: 0.61,
+      status: 'open',
+      comments: []
+    });
+  }
+  if (/MIRACLE/i.test(text)) {
+    list.push({
+      id: 'f-2',
+      ruleId: 'R-TONE-02',
+      type: 'Voice & Tone · R-TONE-02',
+      severity: 'High',
+      phrase: 'MIRACLE',
+      why: 'Aggressive hype term contradicts Lumora’s grounded, clinical register.',
+      excerpt: '“Avoid hyperbolic hype and sensational words like MIRACLE.”',
+      fix: 'breakthrough',
+      confidence: 94,
+      intentScore: 0.82,
+      status: 'open',
+      comments: []
+    });
+  }
+  if (/remove wrinkles in 7 days/i.test(text)) {
+    list.push({
+      id: 'f-3',
+      ruleId: 'R-CLM-03',
+      type: 'Claims Policy · R-CLM-03',
+      severity: 'Critical',
+      phrase: 'remove wrinkles in 7 days',
+      why: 'Clinical timeframe claim not backed by active trial in Claim Ledger.',
+      excerpt: '“Clinical superiority and speed claims require an approved trial registry and citation.”',
+      fix: 'visibly smooth fine lines over time',
+      confidence: 98,
+      intentScore: 0.54,
+      status: 'open',
+      comments: []
+    });
+  }
+  return list;
+}
+
+const pageNotes = {
+  queue: { title: "Review queue", note: "Everything waiting on a human decision." },
+  submit: { title: "New submission", note: "Fast lane runs as you type." },
+  rulebook: { title: "Rulebook", note: "Published rules, claims and glossary." },
+  rules: { title: "Drift & rule health", note: "Where reviewers disagree with the machine, and which channel is drifting." },
+  api: { title: "API & webhooks", note: "Keys, signed events and the delivery log." },
+  audit: { title: "Audit trail", note: "Append-only. Every row commits to the last." },
+  reliability: { title: "Reliability", note: "Model calls, verifier counts and eval results." },
+  visual: { title: "Visual Governance", note: "CIELAB color distance, palette enforcement and visual inspection." }
+};
+
+export default function App() {
+  const [page, setPage] = useState('home'); // 'home', 'demo', 'queue', 'review', 'rulebook', 'rules', 'audit', 'reliability', 'api', 'visual', 'submit'
+  const [activeRole, setActiveRole] = useState('reviewer'); // 'creator', 'reviewer', 'approver', 'admin'
+  const [rules, setRules] = useState(initialRules);
+  const [drafts, setDrafts] = useState(initialDrafts);
+  const [selectedId, setSelectedId] = useState(1);
+  const [queueFilter, setQueueFilter] = useState('all');
+  const [receiptModal, setReceiptModal] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [commentText, setCommentText] = useState('');
+  const [reasonText, setReasonText] = useState('');
+
+  const currentPersona = personas.find(p => p.role === activeRole) || personas[1];
+  const currentDraft = drafts.find(d => d.id === selectedId) || drafts[0];
+  const findings = detectFindings(currentDraft.content, rules);
+  const pendingFindings = findings.filter(f => f.status === 'open');
+
+  const go = (p) => {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const switchRole = (r) => {
+    setActiveRole(r);
+  };
+
+  const handleAcceptFinding = (f) => {
+    const nextContent = currentDraft.content.replace(f.phrase, f.fix);
+    setDrafts(prev => prev.map(d => d.id === currentDraft.id ? { ...d, content: nextContent, status: 'Changes requested' } : d));
+  };
+
+  const handleApproveDraft = () => {
+    if (activeRole !== 'approver' && activeRole !== 'admin') {
+      alert("Only an Approver or Admin seat can sign off on publication.");
+      return;
+    }
+    setDrafts(prev => prev.map(d => d.id === currentDraft.id ? { ...d, status: 'Approved' } : d));
+    setReceiptModal(currentDraft);
+  };
+
+  // ----------------------------------------------------
+  // 1. LANDING PAGE VIEW
+  // ----------------------------------------------------
+  if (page === 'home') {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        {/* Institutional Sticky Header */}
+        <header className="sticky top-0 z-30 border-b border-border/80 bg-background/92 backdrop-blur">
+          <div className="mx-auto flex h-16 w-full max-w-[1180px] items-center justify-between px-5 sm:px-8">
+            <button onClick={() => go('home')} className="cursor-pointer">
+              <BrandLogo />
+            </button>
+            <nav className="hidden items-center gap-7 text-[12px] text-muted-foreground md:flex">
+              <a href="#ideas" className="transition-colors hover:text-foreground">The six ideas</a>
+              <a href="#pipeline" className="transition-colors hover:text-foreground">How it works</a>
+              <a href="#evidence" className="transition-colors hover:text-foreground">Evidence</a>
+              <a href="#roles" className="transition-colors hover:text-foreground">Demo roles</a>
+            </nav>
+            <div className="flex items-center gap-3">
+              <button onClick={() => go('queue')} className="hidden text-[12px] text-muted-foreground hover:text-foreground sm:inline cursor-pointer">
+                Workspace
+              </button>
+              <button
+                onClick={() => go('demo')}
+                className="btn btn-primary h-8 rounded-none px-4 text-[12px] cursor-pointer"
+              >
+                Enter the demo <ArrowRight className="ml-1.5 size-3.5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main>
+          {/* Hero Section */}
+          <section className="mx-auto w-full max-w-[1180px] px-5 pb-14 pt-12 sm:px-8 sm:pt-16 lg:pb-20">
+            <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="h-[1px] w-8 bg-foreground/40" />
+                  <span className="label-caps">Round 2 prototype · Lumora demo workspace</span>
+                </div>
+                <h1 className="serif-display mt-7 text-[clamp(3.1rem,7.2vw,5.5rem)]">
+                  The brand gate<br />you can audit.
+                </h1>
+                <p className="mt-7 max-w-[46ch] text-[15px] leading-7 text-muted-foreground">
+                  BrandSentinel reviews content before it is published against a company's own guidelines. Findings arrive with evidence, a rule and a source excerpt. A human accepts, edits or rejects each one, and the decision trail is hash-chained.
+                </p>
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => go('demo')}
+                    className="btn btn-primary h-11 rounded-none px-6 text-[13px] cursor-pointer"
+                  >
+                    Try the Lumora demo <ArrowRight className="ml-2 size-4" />
+                  </button>
+                  <a
+                    href="#pipeline"
+                    className="btn btn-outline h-11 rounded-none border-border px-6 text-[13px] cursor-pointer inline-flex items-center"
+                  >
+                    See the pipeline
+                  </a>
+                </div>
+                <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  No signup · one-click roles · synthetic brand, seeded data
+                </p>
+                <div className="mt-10 grid grid-cols-3 gap-px border border-border bg-border">
+                  {[["14", "typed rules"], ["6", "ledger claims"], ["05", "specialist reviewers"]].map(([s, r]) => (
+                    <div key={r} className="bg-card px-3 py-4">
+                      <p className="font-serif text-[28px] leading-none">{s}</p>
+                      <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">{r}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Specimen Card on Right */}
+              <div className="relative">
+                <div className="absolute -left-3 top-4 hidden h-[calc(100%-2rem)] w-[1px] bg-border lg:block" />
+                <div className="paper">
+                  <div className="flex items-center justify-between border-b border-border/80 px-5 py-3">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+                      Specimen · Instagram caption · v3
+                    </span>
+                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8F4526]">
+                      <span className="size-1.5 rounded-full bg-[#A9552F]" /> 4 findings
+                    </span>
+                  </div>
+                  <div className="px-5 py-6">
+                    <p className="font-serif text-[24px] leading-[1.35]">
+                      <span className="finding-mark-critical">Glow Serum</span> is here — and it's a{" "}
+                      <span className="finding-mark-critical">MIRACLE</span> for tired skin. Clinically proven to{" "}
+                      <span className="finding-mark">remove wrinkles in 7 days</span>. Get yours before it sells out!!
+                    </p>
+                    <p className="mt-4 font-mono text-[10px] leading-5 text-muted-foreground">
+                      Caption colours: #FF2E93 on #F4EFE6 · <span className="finding-mark">1.9:1 contrast</span>
+                    </p>
+                  </div>
+                  <div className="border-t border-border/80 bg-[#A9552F]/[0.035] px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="border border-[#8F2F24]/40 px-1.5 py-[2px] font-mono text-[8px] uppercase tracking-[0.16em] text-[#8F2F24]">
+                        Critical
+                      </span>
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                        Terminology & messaging · R-TERM-01
+                      </span>
+                      <span className="ml-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#4F5C47]">
+                        <Check className="size-3" /> evidence verified
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[12.5px] leading-6">
+                      “Glow Serum” drops the brand name. The rule requires the full product name on first mention.
+                    </p>
+                    <div className="mt-3 border-l border-border pl-3">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Guideline · Edition 4</p>
+                      <p className="mt-1 text-[11.5px] italic leading-5 text-muted-foreground">
+                        “Always write the full product name ‘Lumora Glow Serum’ on first mention.”
+                      </p>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-[11px]">
+                      <span className="border border-border px-1.5 py-[2px] font-mono text-[9px] text-muted-foreground">FIX</span>
+                      <span className="font-mono text-[11px]">
+                        <span className="text-[#8F2F24] line-through">Glow Serum</span>{" "}
+                        <span className="text-[#4F5C47]">Lumora Glow Serum</span>
+                      </span>
+                      <span className="ml-auto font-mono text-[9px] text-muted-foreground">intent 0.61</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-4 px-1">
+                  <p className="text-[10px] leading-4 text-muted-foreground">
+                    Every finding on the right carries the same six pieces of evidence.
+                  </p>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Fig. 01</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 4 Pillars Strip */}
+          <section className="border-y border-border/80 bg-card/40">
+            <div className="mx-auto grid w-full max-w-[1180px] gap-px bg-border/70 px-5 py-0 sm:px-8 md:grid-cols-4">
+              {[
+                ["The gate", "Content cannot be approved while a critical finding is unresolved."],
+                ["The evidence", "Verbatim spans, real rules, real quotes. Invented proof is dropped."],
+                ["The human", "Creator submits. Reviewer decides. Approver signs. Legal can be raised."],
+                ["The record", "Hash-chained audit and a PDF receipt for every approved version."]
+              ].map(([s, r]) => (
+                <div key={s} className="bg-background px-1 py-7 md:px-6">
+                  <p className="label-caps">{s}</p>
+                  <p className="mt-2 text-[12.5px] leading-6 text-muted-foreground">{r}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Problem Section */}
+          <section className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
+            <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr]">
+              <div>
+                <p className="label-caps">The problem</p>
+                <h2 className="mt-4 font-serif text-[34px] leading-[1.1] sm:text-[40px]">
+                  Content ships faster than the brand can check it.
+                </h2>
+              </div>
+              <div className="space-y-5 text-[14.5px] leading-7 text-muted-foreground lg:pl-10">
+                <p>
+                  A single unclaimed promise in a paid ad can cost a week of removal requests and verification. An old product name stays in the search index long after the campaign ends. Style guides do not enforce themselves at the moment of publishing, and the people writing the copy are not the people who own the rules.
+                </p>
+                <p>
+                  BrandSentinel sits between the draft and the publish button. It does not replace the brand team. It gives them a smaller queue, each item with evidence they can check in seconds, and a record of what they decided.
+                </p>
+                <div className="border-l-2 border-foreground/60 pl-5 font-serif text-[20px] leading-[1.45] text-foreground">
+                  “A finding that cannot show its evidence never reaches a human. That is the whole product.”
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* The Six Ideas */}
+          <section id="ideas" className="border-t border-border/80">
+            <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="label-caps">Six ideas</p>
+                  <h2 className="mt-3 font-serif text-[36px] leading-none sm:text-[44px]">What makes this different</h2>
+                </div>
+                <p className="max-w-[38ch] text-[12.5px] leading-6 text-muted-foreground">
+                  Each one exists in the running product. If it were not built, it would not be on this list.
+                </p>
+              </div>
+              <div className="mt-10 grid gap-px border border-border bg-border md:grid-cols-2 lg:grid-cols-3">
+                {sixIdeas.map(s => (
+                  <div key={s.n} className="group bg-card p-6 transition-colors hover:bg-background">
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-mono text-[10px] tracking-[0.12em] text-muted-foreground">{s.n}</span>
+                      <span className="h-[1px] w-6 bg-border transition-all group-hover:w-10 group-hover:bg-foreground/40" />
+                    </div>
+                    <h3 className="mt-6 font-serif text-[22px] leading-tight">{s.title}</h3>
+                    <p className="mt-3 text-[12.5px] leading-6 text-muted-foreground">{s.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* The Pipeline */}
+          <section id="pipeline" className="border-t border-border/80 bg-card/50">
+            <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
+              <p className="label-caps">The pipeline</p>
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+                <h2 className="max-w-[18ch] font-serif text-[36px] leading-[1.05] sm:text-[44px]">Two lanes, one gate</h2>
+                <p className="max-w-[44ch] text-[12.5px] leading-6 text-muted-foreground">
+                  The fast lane is deterministic and returns in milliseconds. The deep lane runs five reviewers in parallel, then a verifier that can only delete, never add.
+                </p>
+              </div>
+              <div className="mt-10 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1.05fr]">
+                {/* Lane 01 */}
+                <div className="paper p-5">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Lane 01 · deterministic · &lt; 1s</p>
+                  <h3 className="mt-2 font-serif text-[24px]">Fast lane</h3>
+                  <ul className="mt-4 space-y-2.5 border-t border-border/70 pt-4">
+                    {["Glossary and banned terms", "Product naming and casing", "WCAG contrast ratio", "Missing alt text", "Palette distance in CIELAB"].map(s => (
+                      <li key={s} className="flex items-start gap-2 text-[12px] leading-5">
+                        <Minus className="mt-[3px] size-3 shrink-0 text-muted-foreground" /> {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="hidden items-center justify-center lg:flex">
+                  <ArrowRight className="size-4 text-muted-foreground" />
+                </div>
+                {/* Lane 02 */}
+                <div className="paper p-5">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Lane 02 · judgment · parallel</p>
+                  <h3 className="mt-2 font-serif text-[24px]">Deep lane</h3>
+                  <ul className="mt-4 space-y-2.5 border-t border-border/70 pt-4">
+                    {["Tone & voice", "Terminology & messaging", "Claims against the ledger", "Visual consistency", "Accessibility reading"].map(s => (
+                      <li key={s} className="flex items-start gap-2 text-[12px] leading-5">
+                        <Minus className="mt-[3px] size-3 shrink-0 text-muted-foreground" /> {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="hidden items-center justify-center lg:flex">
+                  <ArrowRight className="size-4 text-muted-foreground" />
+                </div>
+                {/* Evidence Gate */}
+                <div className="border border-foreground/25 bg-foreground p-5 text-background">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-background/60">Evidence gate</p>
+                  <h3 className="mt-2 font-serif text-[24px] text-background">Verifier → Synthesizer</h3>
+                  <p className="mt-4 border-t border-background/20 pt-4 text-[12px] leading-6 text-background/75">
+                    Duplicates are merged, severity decides order, fixes get an intent score. Dropped findings are counted and shown, not hidden.
+                  </p>
+                  <button
+                    onClick={() => go('demo')}
+                    className="mt-5 inline-flex items-center gap-1.5 border-b border-background/40 pb-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-background cursor-pointer"
+                  >
+                    Run it on the sample <ArrowRight className="size-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Evidence or Silence */}
+          <section id="evidence" className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
+            <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+              <div>
+                <p className="label-caps">Evidence or silence</p>
+                <h2 className="mt-3 font-serif text-[36px] leading-[1.05] sm:text-[42px]">
+                  Four checks<br />before a finding<br />reaches you.
+                </h2>
+                <p className="mt-5 max-w-[38ch] text-[13px] leading-6 text-muted-foreground">
+                  Models are useful readers and unreliable witnesses. So we do not trust their output by default. A dropped finding is logged with its reason, and the report shows how many were suppressed.
+                </p>
+              </div>
+              <div className="border border-border">
+                {evidenceChecks.map((s, i) => (
+                  <div key={s} className="flex gap-4 border-b border-border/70 px-5 py-5 last:border-b-0">
+                    <span className="font-mono text-[10px] text-muted-foreground">0{i + 1}</span>
+                    <div className="flex-1">
+                      <p className="text-[13.5px] leading-6">{s}</p>
+                    </div>
+                    <Check className="mt-1 size-4 shrink-0 text-[#4F5C47]" strokeWidth={1.6} />
+                  </div>
+                ))}
+                <div className="bg-secondary/60 px-5 py-4">
+                  <p className="font-mono text-[10px] leading-5 text-muted-foreground">
+                    FAILURE MODES TARGETED · tone drift · naming · unsupported claim · expired claim · visual inconsistency · accessibility
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Demo Roles */}
+          <section id="roles" className="border-t border-border/80 bg-card/60">
+            <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
+              <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+                <div>
+                  <p className="label-caps">Judge access</p>
+                  <h2 className="mt-3 font-serif text-[36px] leading-[1.05] sm:text-[42px]">
+                    Four roles.<br />No signup.
+                  </h2>
+                  <p className="mt-5 max-w-[40ch] text-[13.5px] leading-6 text-muted-foreground">
+                    Enter as any Lumora persona with one click. The role switcher stays in the header, so you can submit as Creator, decide as Reviewer and sign off as Approver without changing accounts. Every switch is audited.
+                  </p>
+                  <button
+                    onClick={() => go('demo')}
+                    className="btn btn-primary mt-6 h-11 rounded-none px-6 text-[13px] cursor-pointer"
+                  >
+                    Open the demo screen <ArrowRight className="ml-2 size-4" />
+                  </button>
+                </div>
+                <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
+                  {personas.map(p => (
+                    <button
+                      key={p.role}
+                      onClick={() => { setActiveRole(p.role); go('queue'); }}
+                      className="bg-card p-5 text-left transition-colors hover:bg-background cursor-pointer"
+                    >
+                      <p className="label-caps text-[9px]">{p.title}</p>
+                      <p className="mt-2 font-serif text-[20px] leading-tight">{p.name}</p>
+                      <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">{p.detail}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        {/* Institutional Footer */}
+        <footer className="border-t border-border/80">
+          <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <div className="flex items-center gap-3">
+              <BrandLogo compact={true} />
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                Round 2 · October 2026
+              </span>
+            </div>
+            <p className="max-w-[62ch] text-[10.5px] leading-5 text-muted-foreground">
+              Lumora is a synthetic brand created for this prototype. All content, claims and studies are fictional. Model output is treated as a proposal; a human makes every decision.
+            </p>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // 2. DEMO ROLE SELECTION VIEW
+  // ----------------------------------------------------
+  if (page === 'demo') {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="border-b border-border/80">
+          <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-5 sm:px-8">
+            <button onClick={() => go('home')} className="cursor-pointer">
+              <BrandLogo />
+            </button>
+            <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              Demo access · no signup
+            </span>
+          </div>
+        </header>
+
+        <main className="mx-auto w-full max-w-[1100px] px-5 py-10 sm:px-8 sm:py-14">
+          <div className="grid gap-12 lg:grid-cols-[0.78fr_1.22fr]">
+            <div>
+              <p className="label-caps">Lumora Studio · synthetic brand</p>
+              <h1 className="serif-display mt-5 text-[clamp(2.6rem,5vw,3.6rem)]">
+                Choose a seat<br />at the gate.
+              </h1>
+              <p className="mt-5 max-w-[38ch] text-[13.5px] leading-6 text-muted-foreground">
+                One click signs you into the seeded Lumora workspace under a demo persona. Use the role switcher in the header to move between seats without signing up again.
+              </p>
+              <div className="mt-8 border border-border bg-card/60 p-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-[#4F5C47]" strokeWidth={1.5} />
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em]">What is real here</p>
+                </div>
+                <ul className="mt-3 space-y-2 text-[11.5px] leading-5 text-muted-foreground">
+                  <li>The rulebook, claims ledger and guideline document are seeded.</li>
+                  <li>Model calls are live. Findings are stored, not mocked.</li>
+                  <li>Every role switch and decision is written to the audit chain.</li>
+                  <li>Nothing is published anywhere. Approval only produces a receipt.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
+              {personas.map((p, i) => (
+                <button
+                  key={p.role}
+                  onClick={() => { setActiveRole(p.role); go('queue'); }}
+                  className="group flex min-h-[210px] flex-col items-start bg-card p-5 text-left transition-colors hover:bg-background cursor-pointer"
+                >
+                  <div className="flex w-full items-start justify-between">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                      0{i + 1} · {p.title}
+                    </span>
+                    <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+                  </div>
+                  <h2 className="mt-6 font-serif text-[27px] leading-none">{p.name}</h2>
+                  <p className="mt-1.5 font-serif text-[15px] italic text-muted-foreground">{p.line}</p>
+                  <p className="mt-3 text-[11.5px] leading-5 text-muted-foreground">{p.detail}</p>
+                  <span className="mt-auto pt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-foreground/70">
+                    Enter as {p.title.toLowerCase()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // 3. APP SHELL & WORKSPACE VIEW (BrandSentinel Layout)
+  // ----------------------------------------------------
+  const currentNavTitle = pageNotes[page]?.title || "Workspace";
+  const currentNavNote = pageNotes[page]?.note || "Brand governance, with evidence.";
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-[1440px]">
+        {/* Institutional Left Sidebar */}
+        <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-border/80 px-5 py-6 lg:flex">
+          <button onClick={() => go('home')} className="px-1 text-left cursor-pointer">
+            <BrandLogo />
+          </button>
+          <p className="mt-3 px-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Lumora Studio · demo
+          </p>
+
+          <nav className="mt-9 flex flex-col gap-[2px]">
+            {[
+              { id: 'queue', label: 'Review queue', icon: LayoutDashboard, count: drafts.filter(d => d.status === 'In review').length },
+              { id: 'submit', label: 'New submission', icon: FilePlus2 },
+              { id: 'rulebook', label: 'Rulebook', icon: BookOpen },
+              { id: 'rules', label: 'Drift & rule health', icon: Activity },
+              { id: 'audit', label: 'Audit trail', icon: History },
+              { id: 'api', label: 'API & webhooks', icon: Key },
+              { id: 'reliability', label: 'Reliability', icon: Cpu },
+              { id: 'visual', label: 'Visual Studio', icon: Palette }
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = page === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => go(item.id)}
+                  className={`group flex items-center gap-3 border-l-2 px-3 py-[9px] text-[13px] transition-colors cursor-pointer text-left ${
+                    isActive
+                      ? "border-foreground bg-foreground/[0.045] text-foreground font-medium"
+                      : "border-transparent text-muted-foreground hover:bg-foreground/[0.025] hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="size-[15px] opacity-70" strokeWidth={1.5} />
+                  <span>{item.label}</span>
+                  {item.count !== undefined && item.count > 0 && (
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Signed-in Persona at Bottom */}
+          <div className="mt-auto space-y-4">
+            <div className="border border-border/80 p-3">
+              <p className="label-caps text-[9px]">Signed in</p>
+              <p className="mt-1 font-serif text-[16px] leading-tight">{currentPersona.name}</p>
+              <p className="mt-0.5 text-[11px] capitalize text-muted-foreground">
+                {currentPersona.title} · Lumora Studio
+              </p>
+              <div className="mt-3 flex items-center justify-between border-t border-border/70 pt-2">
+                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                  14 rules · 6 claims
+                </span>
+                <button onClick={() => go('demo')} className="text-muted-foreground hover:text-foreground cursor-pointer" title="Switch persona">
+                  <LogOut className="size-[14px]" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+            <p className="px-1 text-[10px] leading-4 text-muted-foreground/80">
+              Synthetic brand and seeded data. Nothing here is a real client.
+            </p>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="min-w-0 flex-1">
+          {/* Top Header Bar */}
+          <header className="sticky top-0 z-20 border-b border-border/80 bg-background/95 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
+              <div className="flex items-center gap-4">
+                <button onClick={() => go('home')} className="lg:hidden cursor-pointer">
+                  <BrandLogo compact={true} />
+                </button>
+                <div className="hidden lg:block">
+                  <p className="label-caps text-[9px]">Lumora Studio</p>
+                  <h1 className="mt-0.5 font-serif text-[22px] leading-none">{currentNavTitle}</h1>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Role Switcher Pill */}
+                <div className="flex items-center gap-2">
+                  <span className="label-caps text-[9px] hidden sm:inline">Acting as</span>
+                  <select
+                    value={activeRole}
+                    onChange={(e) => switchRole(e.target.value)}
+                    className="h-8 rounded-none border border-border bg-card px-2.5 text-[12px] capitalize cursor-pointer focus:outline-none"
+                  >
+                    {personas.map(p => (
+                      <option key={p.role} value={p.role}>{p.title} ({p.name})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => go('submit')}
+                  className="btn btn-primary h-8 rounded-none px-3 text-[12px] cursor-pointer"
+                >
+                  <FilePlus2 className="mr-1.5 size-3.5" strokeWidth={1.6} />
+                  Submit content
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile horizontal nav */}
+            <nav className="flex gap-1 overflow-x-auto border-t border-border/60 px-3 py-2 lg:hidden">
+              {[
+                { id: 'queue', label: 'Queue' },
+                { id: 'submit', label: 'Submit' },
+                { id: 'rulebook', label: 'Rulebook' },
+                { id: 'rules', label: 'Drift' },
+                { id: 'audit', label: 'Audit' },
+                { id: 'api', label: 'API' },
+                { id: 'reliability', label: 'Reliability' },
+                { id: 'visual', label: 'Visual' }
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => go(t.id)}
+                  className={`whitespace-nowrap px-2.5 py-1 text-[11px] cursor-pointer ${
+                    page === t.id ? "bg-foreground text-background" : "text-muted-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          </header>
+
+          <main className="px-4 py-6 sm:px-7 sm:py-8">
+            {/* Page Header Note */}
+            <div className="mb-6 hidden border-b border-border/70 pb-4 lg:block">
+              <p className="prose-note max-w-2xl">{currentNavNote}</p>
+            </div>
+
+            {/* TAB: REVIEW QUEUE (AppDashboard) */}
+            {page === 'queue' && (
+              <div className="grid gap-6 xl:grid-cols-[1.55fr_0.85fr]">
+                <div className="min-w-0">
+                  <section className="border border-border bg-card">
+                    <div className="flex flex-col gap-4 border-b border-border/80 px-5 py-5 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="label-caps">Lumora Studio · live queue</p>
+                        <h2 className="mt-2 font-serif text-[30px] leading-none">The gate, this morning</h2>
+                        <p className="mt-2 max-w-[52ch] text-[12px] leading-5 text-muted-foreground">
+                          Open a submission to work its findings. The whole loop runs on seeded Lumora data, with live model review.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => go('submit')}
+                        className="btn btn-primary h-9 rounded-none px-4 text-[12px] cursor-pointer"
+                      >
+                        <FilePlus2 className="mr-2 size-3.5" /> New submission
+                      </button>
+                    </div>
+
+                    {/* 4 Counters Grid */}
+                    <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+                      {[
+                        ["Awaiting review", drafts.filter(d => d.status === 'In review').length],
+                        ["Findings", drafts.reduce((acc, d) => acc + d.findingCount, 0)],
+                        ["Decided", drafts.filter(d => d.status === 'Changes requested').length],
+                        ["Approved", drafts.filter(d => d.status === 'Approved').length]
+                      ].map(([s, t]) => (
+                        <div key={s} className="bg-card px-4 py-4">
+                          <p className="font-serif text-[28px] leading-none">{String(t)}</p>
+                          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground">{s}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Filter bar */}
+                    <div className="flex items-center justify-between border-y border-border/80 px-5 py-2.5">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground">Submissions</p>
+                      <div className="flex gap-1">
+                        {["all", "open"].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setQueueFilter(s)}
+                            className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] cursor-pointer ${
+                              queueFilter === s
+                                ? "bg-foreground text-background"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {s === 'all' ? 'All' : 'Open'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Submissions List */}
+                    <div>
+                      {drafts
+                        .filter(d => queueFilter === 'all' ? true : d.status !== 'Approved')
+                        .map(s => (
+                          <div
+                            key={s.id}
+                            onClick={() => { setSelectedId(s.id); go('review'); }}
+                            className="group grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border/60 px-5 py-4 transition-colors last:border-b-0 hover:bg-background cursor-pointer"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate font-serif text-[18px] leading-tight">{s.title}</p>
+                                {s.legalFlag && (
+                                  <span className="border border-[#8F2F24]/50 px-1.5 py-[1px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#8F2F24]">
+                                    Legal
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                                {s.channel} · v{s.version} · {s.creatorName} · {s.updatedAt}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="hidden text-right sm:block">
+                                <p className="font-serif text-[18px] leading-none">{s.findingCount}</p>
+                                <p className="font-mono text-[8px] uppercase tracking-[0.12em] text-muted-foreground">findings</p>
+                              </div>
+                              <span className={`tag ${s.status === 'Approved' ? 'tag-green' : s.status === 'In review' ? 'tag-amber' : 'tag-subtle'}`}>
+                                {s.status}
+                              </span>
+                              <ArrowRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </section>
+
+                  {/* Two Minute Path */}
+                  <section className="mt-6 border border-border bg-card">
+                    <div className="flex items-center justify-between border-b border-border/80 px-5 py-3">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground">The two-minute path</p>
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                        Creator → Reviewer → Approver
+                      </span>
+                    </div>
+                    <div className="grid gap-px bg-border sm:grid-cols-4">
+                      {[
+                        ["01", "Submit", "Load the Lumora caption. Fast lane flags issues immediately."],
+                        ["02", "Review", "Specialist reviewers report. The verifier suppresses anything unsupported."],
+                        ["03", "Decide", "Accept, edit or reject. Approve with the Approver role."],
+                        ["04", "Receipt", "Export the PDF. Check the audit chain from the sidebar."]
+                      ].map(([s, t, i]) => (
+                        <div key={s} className="bg-card px-4 py-4">
+                          <p className="font-mono text-[9px] text-muted-foreground">{s}</p>
+                          <p className="mt-2 font-serif text-[17px]">{t}</p>
+                          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{i}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                {/* Right Column / Brand Pack Side Panel */}
+                <aside className="space-y-6">
+                  <section className="border border-border bg-card p-5">
+                    <div className="flex items-center justify-between">
+                      <p className="label-caps">Active brand pack</p>
+                      <span className="border border-[#6F7D66]/50 px-1.5 py-[2px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#4F5C47]">
+                        Published
+                      </span>
+                    </div>
+                    <p className="mt-3 font-serif text-[26px] leading-none">Lumora</p>
+                    <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">Edition 4 · Q4 2026</p>
+                    <div className="mt-4 flex gap-1.5">
+                      {["#1C1917", "#8F2F24", "#A9552F", "#4F5C47", "#D4C7B5"].map(hex => (
+                        <div key={hex} className="h-7 flex-1 border border-black/10" style={{ backgroundColor: hex }} title={hex} />
+                      ))}
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-px bg-border">
+                      {[["Rules", 14], ["Claims", 6], ["Expiring / expired", 1], ["Model calls", 42]].map(([s, t]) => (
+                        <div key={s} className="bg-card px-3 py-2.5">
+                          <p className="font-serif text-[19px] leading-none">{String(t)}</p>
+                          <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-muted-foreground">{s}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => go('rulebook')}
+                      className="mt-4 inline-flex items-center gap-1.5 border-b border-foreground/25 pb-0.5 font-mono text-[9px] uppercase tracking-[0.13em] cursor-pointer"
+                    >
+                      Open the rulebook <ArrowRight className="size-3" />
+                    </button>
+                  </section>
+
+                  {/* Shortcuts Panel */}
+                  <section className="border border-border bg-card p-5">
+                    <p className="label-caps">Shortcuts</p>
+                    <div className="mt-3 divide-y divide-border/70">
+                      {[
+                        ['audit', 'Audit trail', 'Verify the hash chain', History],
+                        ['rules', 'Rule health', 'Override rates by rule', Activity],
+                        ['reliability', 'Reliability', 'Calls, verifier, eval', Cpu]
+                      ].map(([route, title, desc, Icon]) => (
+                        <button
+                          key={route}
+                          onClick={() => go(route)}
+                          className="group flex w-full items-center gap-3 py-3 text-left cursor-pointer"
+                        >
+                          <Icon className="size-4 text-muted-foreground" strokeWidth={1.5} />
+                          <div className="flex-1">
+                            <p className="text-[12px] leading-4">{title}</p>
+                            <p className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground">{desc}</p>
+                          </div>
+                          <ArrowRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Dark Institutional Quote Card */}
+                  <section className="border border-border bg-[#1F1D1A] p-5 text-[#F4EFE6]">
+                    <BrandLogo compact={true} />
+                    <p className="mt-4 border-t border-[#F4EFE6]/20 pt-4 font-serif text-[19px] leading-[1.35]">
+                      “A finding that cannot show its evidence never reaches a human.”
+                    </p>
+                    <p className="mt-3 text-[10.5px] leading-5 text-[#F4EFE6]/60">
+                      Suppressed findings stay counted. The report tells you what the verifier removed and why.
+                    </p>
+                  </section>
+                </aside>
+              </div>
+            )}
+
+            {/* TAB: REVIEW DETAIL WORKSPACE */}
+            {page === 'review' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-border/80 pb-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => go('queue')}
+                      className="btn btn-outline h-8 rounded-none px-2.5 text-[11px] cursor-pointer"
+                    >
+                      ← Back to queue
+                    </button>
+                    <div>
+                      <h2 className="font-serif text-[24px] leading-none">{currentDraft.title}</h2>
+                      <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
+                        {currentDraft.channel} · Version {currentDraft.version} · Author: {currentDraft.creatorName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {currentDraft.status === 'Approved' && (
+                      <button
+                        onClick={() => setReceiptModal(currentDraft)}
+                        className="btn btn-outline h-8 rounded-none text-[12px] cursor-pointer"
+                      >
+                        <Award className="mr-1.5 size-3.5" /> Official Receipt
+                      </button>
+                    )}
+                    <button
+                      onClick={handleApproveDraft}
+                      disabled={currentDraft.status === 'Approved'}
+                      className="btn btn-primary h-8 rounded-none text-[12px] cursor-pointer"
+                    >
+                      <CheckCheck className="mr-1.5 size-3.5" />
+                      {currentDraft.status === 'Approved' ? 'Signed & Approved' : 'Sign and approve'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                  {/* Left: Content Editor */}
+                  <div className="paper p-5">
+                    <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                      <span className="label-caps">Draft content · live fast lane</span>
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                        ⚡ {findings.length} findings detected
+                      </span>
+                    </div>
+
+                    <div className="mt-4">
+                      <textarea
+                        value={currentDraft.content}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDrafts(prev => prev.map(d => d.id === currentDraft.id ? { ...d, content: val } : d));
+                        }}
+                        rows={6}
+                        className="w-full border border-border bg-background p-3 font-serif text-[18px] leading-relaxed focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="mt-4 border-t border-border/70 pt-4">
+                      <p className="label-caps">Highlighted findings in context</p>
+                      <div className="mt-2 rounded bg-card p-3 font-serif text-[18px] leading-relaxed border border-border/60">
+                        {currentDraft.content}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Findings Panel */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                      <span className="label-caps">Evidence-backed findings ({findings.length})</span>
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#4F5C47]">
+                        ✓ All grounded
+                      </span>
+                    </div>
+
+                    {findings.map(f => (
+                      <div key={f.id} className="paper p-4 border border-border/80">
+                        <div className="flex items-center justify-between">
+                          <span className={`tag ${f.severity === 'Critical' ? 'tag-critical' : 'tag-amber'}`}>
+                            {f.severity}
+                          </span>
+                          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                            {f.type}
+                          </span>
+                        </div>
+                        <p className="mt-2.5 text-[13px] leading-5 font-medium">{f.why}</p>
+                        <div className="mt-2.5 border-l-2 border-border pl-3 py-0.5">
+                          <p className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground">Rulebook Excerpt</p>
+                          <p className="mt-0.5 text-[11.5px] italic text-muted-foreground">{f.excerpt}</p>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5">
+                          <div className="font-mono text-[11px]">
+                            <span className="text-[#8F2F24] line-through">{f.phrase}</span> → <span className="text-[#4F5C47]">{f.fix}</span>
+                          </div>
+                          <span className="font-mono text-[9px] text-muted-foreground">intent {f.intentScore}</span>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            onClick={() => handleAcceptFinding(f)}
+                            className="btn btn-outline h-7 px-2.5 text-[11px] rounded-none cursor-pointer"
+                          >
+                            <Check className="mr-1 size-3" /> Accept fix
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: RULEBOOK & CLAIMS LEDGER */}
+            {page === 'rulebook' && (
+              <div className="space-y-8">
+                <KnowledgeBaseRAG tenantId="lumora-tenant" role={activeRole} />
+                <ClaimsLedger role={activeRole} />
+              </div>
+            )}
+
+            {/* TAB: DRIFT & RULE HEALTH */}
+            {page === 'rules' && (
+              <div>
+                <RuleHealthDashboard />
+              </div>
+            )}
+
+            {/* TAB: RELIABILITY & RED-TEAM EVAL */}
+            {page === 'reliability' && (
+              <div>
+                <ReliabilityDashboard />
+              </div>
+            )}
+
+            {/* TAB: API & WEBHOOKS */}
+            {page === 'api' && (
+              <div>
+                <ApiIntegrations />
+              </div>
+            )}
+
+            {/* TAB: AUDIT CHAIN */}
+            {page === 'audit' && (
+              <div>
+                <AuditChainView />
+              </div>
+            )}
+
+            {/* TAB: VISUAL STUDIO */}
+            {page === 'visual' && (
+              <div>
+                <VisualGovernanceStudio />
+              </div>
+            )}
+
+            {/* TAB: NEW SUBMISSION */}
+            {page === 'submit' && (
+              <div>
+                <SubmissionPage goTo={go} />
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* Official Publication Receipt Modal */}
+      {receiptModal && (
+        <PublicationReceiptModal
+          draft={receiptModal}
+          onClose={() => setReceiptModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+
 createRoot(document.getElementById('root')).render(
   <AuthProvider>
     <App />
