@@ -18,7 +18,6 @@ import './collab.css';
 import './vision.css';
 
 import AIReviewPanel from './AIReviewPanel.jsx';
-import SubmissionPage from './SubmissionPage.jsx';
 import KnowledgeBaseRAG from './KnowledgeBaseRAG.jsx';
 import CollaborativeWorkspace from './CollaborativeWorkspace.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
@@ -211,7 +210,6 @@ function detectFindings(text) {
 
 const pageNotes = {
   queue: { title: "Review queue", note: "Everything waiting on a human decision." },
-  submit: { title: "New submission", note: "Fast lane runs as you type." },
   rulebook: { title: "Rulebook", note: "Published rules, claims and glossary." },
   rules: { title: "Drift & rule health", note: "Where reviewers disagree with the machine, and which channel is drifting." },
   api: { title: "API & webhooks", note: "Keys, signed events and the delivery log." },
@@ -228,12 +226,27 @@ export default function App() {
   const [queueFilter, setQueueFilter] = useState('all');
   const [receiptModal, setReceiptModal] = useState(null);
 
+  useEffect(() => {
+    const handleHash = () => {
+      const h = window.location.hash.replace('#', '');
+      if (['queue', 'rulebook', 'rules', 'audit', 'api', 'reliability', 'visual', 'review'].includes(h)) {
+        setPage(h);
+      } else if (h === 'ideas' || h === 'submit') {
+        setPage('queue');
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
   const currentPersona = personas.find(p => p.role === activeRole) || personas[1];
   const currentDraft = drafts.find(d => d.id === selectedId) || drafts[0];
   const findings = detectFindings(currentDraft.content);
 
   const go = (p) => {
-    setPage(p);
+    const target = p === 'submit' ? 'queue' : p;
+    setPage(target);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -639,7 +652,6 @@ export default function App() {
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {[
             { id: 'queue', label: 'Review queue', icon: LayoutDashboard, count: drafts.filter(d => d.status === 'In review').length },
-            { id: 'submit', label: 'New submission', icon: FilePlus2 },
             { id: 'rulebook', label: 'Rulebook', icon: BookOpen },
             { id: 'rules', label: 'Drift & rule health', icon: Activity },
             { id: 'audit', label: 'Audit trail', icon: History },
@@ -713,8 +725,8 @@ export default function App() {
               </select>
             </div>
 
-            <button onClick={() => go('submit')} className="bs-btn bs-btn-primary" style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}>
-              <FilePlus2 size={13} /> Submit content
+            <button onClick={() => { setSelectedId(1); go('review'); }} className="bs-btn bs-btn-primary" style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}>
+              <Eye size={13} /> Review specimen
             </button>
           </div>
         </header>
@@ -739,8 +751,8 @@ export default function App() {
                         Open a submission to work its findings. The whole loop runs on seeded Lumora data, with live model review.
                       </p>
                     </div>
-                    <button onClick={() => go('submit')} className="bs-btn bs-btn-primary" style={{ fontSize: '12px', padding: '7px 14px' }}>
-                      <FilePlus2 size={14} /> New submission
+                    <button onClick={() => { setSelectedId(1); go('review'); }} className="bs-btn bs-btn-primary" style={{ fontSize: '12px', padding: '7px 14px' }}>
+                      <Eye size={14} /> Review specimen
                     </button>
                   </div>
 
@@ -1018,9 +1030,6 @@ export default function App() {
 
           {/* TAB: VISUAL STUDIO */}
           {page === 'visual' && <VisualGovernanceStudio />}
-
-          {/* TAB: NEW SUBMISSION */}
-          {page === 'submit' && <SubmissionPage goTo={go} />}
         </main>
       </div>
 
