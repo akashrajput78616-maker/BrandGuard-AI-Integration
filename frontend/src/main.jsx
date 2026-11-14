@@ -30,12 +30,12 @@ import ClaimsLedger from './ClaimsLedger.jsx';
 import AuditChainView from './AuditChainView.jsx';
 import PublicationReceiptModal from './PublicationReceiptModal.jsx';
 
-// BrandSentinel Logo
+// BrandGuard Logo
 function BrandLogo({ compact = false }) {
   return (
     <div className="bs-logo">
       <span className="bs-logo-square">B</span>
-      <span className="bs-logo-text">BrandSentinel</span>
+      <span className="bs-logo-text">BrandGuard</span>
       {!compact && <span className="bs-logo-badge">R2</span>}
     </div>
   );
@@ -297,7 +297,7 @@ export default function App() {
                 The brand gate<br />you can audit.
               </h1>
               <p style={{ fontSize: '15px', lineHeight: 1.75, color: 'var(--muted-foreground)', maxWidth: '480px', margin: '0 0 28px' }}>
-                BrandSentinel reviews content before it is published against a company's own guidelines. Findings arrive with evidence, a rule and a source excerpt. A human accepts, edits or rejects each one, and the decision trail is hash-chained.
+                BrandGuard reviews content before it is published against a company's own guidelines. Findings arrive with evidence, a rule and a source excerpt. A human accepts, edits or rejects each one, and the decision trail is hash-chained.
               </p>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 <button onClick={() => go('demo')} className="bs-btn bs-btn-primary" style={{ padding: '12px 22px' }}>
@@ -418,7 +418,7 @@ export default function App() {
                 A single unclaimed promise in a paid ad can cost a week of removal requests and verification. An old product name stays in the search index long after the campaign ends. Style guides do not enforce themselves at the moment of publishing, and the people writing the copy are not the people who own the rules.
               </p>
               <p style={{ margin: 0 }}>
-                BrandSentinel sits between the draft and the publish button. It does not replace the brand team. It gives them a smaller queue, each item with evidence they can check in seconds, and a record of what they decided.
+                BrandGuard sits between the draft and the publish button. It does not replace the brand team. It gives them a smaller queue, each item with evidence they can check in seconds, and a record of what they decided.
               </p>
               <div style={{ borderLeft: '2px solid var(--foreground)', paddingLeft: '20px', fontFamily: 'var(--font-serif)', fontSize: '20px', lineHeight: 1.45, color: 'var(--foreground)' }}>
                 “A finding that cannot show its evidence never reaches a human. That is the whole product.”
@@ -620,7 +620,7 @@ export default function App() {
   }
 
   // ==========================================
-  // 3. APP WORKSPACE (BrandSentinel Layout)
+  // 3. APP WORKSPACE (BrandGuard Layout)
   // ==========================================
   const currentNavTitle = pageNotes[page]?.title || "Workspace";
   const currentNavNote = pageNotes[page]?.note || "Brand governance, with evidence.";

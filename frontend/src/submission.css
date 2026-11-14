@@ -84,8 +84,8 @@
 }
 .sub-link-card > svg { color: #0fa3a3; flex-shrink: 0; }
 .sub-link-card strong { font-size: 13px; display: block; }
-.sub-link-card small { font-size: 10px; color: var(--muted); }
-.sub-link-card > svg:last-child { margin-left: auto; color: var(--muted); }
+.sub-link-card small { font-size: 10px; color: var(--muted-foreground); }
+.sub-link-card > svg:last-child { margin-left: auto; color: var(--muted-foreground); }
 
 /* ─── Section Headers ─── */
 .sub-section-header {
@@ -96,7 +96,8 @@
   line-height: 1.2; margin: 13px 0 17px;
 }
 .sub-section-header p {
-  color: var(--muted); font-size: 15px;
+  color: #5a544e;
+  color: var(--muted-foreground); font-size: 15px;
   line-height: 1.8; max-width: 600px;
 }
 
@@ -124,7 +125,7 @@
 .sub-overview-card svg { color: #0fa3a3; }
 .sub-overview-card.problem svg { color: #d64545; }
 .sub-overview-card h3 { font-size: 19px; margin: 18px 0 10px; }
-.sub-overview-card p { font-size: 13px; color: var(--muted); line-height: 1.8; }
+.sub-overview-card p { font-size: 13.5px; color: #4a453f; line-height: 1.75; }
 
 /* ─── Workflow Steps ─── */
 .sub-workflow-section {
@@ -160,7 +161,7 @@
   background: linear-gradient(90deg, #0fa3a3, transparent);
 }
 .sub-workflow-step h3 { font-size: 16px; margin: 14px 0 8px; }
-.sub-workflow-step p { font-size: 12px; color: var(--muted); line-height: 1.8; }
+.sub-workflow-step p { font-size: 12.5px; color: #4a453f; line-height: 1.7; }
 .sub-cta-inline {
   text-align: center; margin-top: 40px;
 }
@@ -195,13 +196,14 @@
 .sub-status.progress { background: #fff1dc; color: #b67a21; }
 .sub-status.planned { background: #efedff; color: #6b5bd6; }
 .sub-feature-card h3 { font-size: 14px; margin: 12px 0 6px; }
-.sub-feature-card p { font-size: 11px; color: var(--muted); line-height: 1.7; }
+.sub-feature-card p { font-size: 11.5px; color: #4a453f; line-height: 1.65; }
 
 /* ─── Tech Section ─── */
 .sub-tech-section {
   background: #0b1f3a; color: #fff;
 }
-.sub-tech-section .sub-section-header p { color: #9cb7cc; }
+.sub-tech-section .sub-section-header p {
+  color: #5a544e; color: #9cb7cc; }
 .sub-tech-section .kicker.light { color: #78d9cf; }
 .sub-tech-section h2 span { color: #78d9cf; }
 
@@ -305,7 +307,7 @@
 }
 .sub-timeline-round {
   font-size: 10px; font-weight: 800;
-  letter-spacing: 1.2px; color: var(--muted);
+  letter-spacing: 1.2px; color: var(--muted-foreground);
 }
 .sub-timeline-item.active .sub-timeline-round { color: #0fa3a3; }
 .sub-timeline-content h3 {
@@ -315,7 +317,7 @@
   list-style: none; padding: 0; margin: 0;
 }
 .sub-timeline-content li {
-  font-size: 13px; color: var(--muted);
+  font-size: 13px; color: var(--muted-foreground);
   padding: 5px 0; line-height: 1.7;
 }
 .sub-timeline-item.active li { color: var(--ink); }
@@ -339,14 +341,15 @@
 }
 .sub-change-card .tag { margin-bottom: 8px; }
 .sub-change-card h4 { font-size: 15px; margin: 10px 0 6px; }
-.sub-change-card p { font-size: 12px; color: var(--muted); line-height: 1.7; }
+.sub-change-card p { font-size: 12px; color: var(--muted-foreground); line-height: 1.7; }
 
 /* ─── Round 3 Section ─── */
 .sub-r3-section {
   background: linear-gradient(175deg, #0b1f3a 0%, #132f4f 100%);
   color: #fff;
 }
-.sub-r3-section .sub-section-header p { color: #9cb7cc; }
+.sub-r3-section .sub-section-header p {
+  color: #5a544e; color: #9cb7cc; }
 .sub-r3-section h2 span { color: #78d9cf; }
 
 .sub-r3-grid {
@@ -425,7 +428,7 @@
   font-size: 13px; font-weight: 800;
 }
 .sub-scoring-card h3 { font-size: 14px; margin: 0 0 8px; }
-.sub-scoring-card p { font-size: 11px; color: var(--muted); line-height: 1.7; }
+.sub-scoring-card p { font-size: 11px; color: var(--muted-foreground); line-height: 1.7; }
 
 /* ─── Final CTA ─── */
 .sub-final-cta {

@@ -79,7 +79,7 @@ export async function searchGuidelineChunks(query, tenantId = "default-tenant", 
 }
 
 // --------------------------------------------------
-// BrandSentinel-Parity Feature APIs
+// BrandGuard-Parity Feature APIs
 // --------------------------------------------------
 
 export async function fetchAuditLogs(limit = 50) {
