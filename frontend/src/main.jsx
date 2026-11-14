@@ -10,10 +10,7 @@ import {
   ExternalLink, Trash2, Award, Activity, Cpu, Key, FileCheck2, Zap, LogOut,
   Minus, FilePlus2, Layers, CheckCheck
 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
-import { jsPDF } from 'jspdf';
 
-import './brandsentinel.css';
 import './style.css';
 import './submission.css';
 import './rag.css';
@@ -33,21 +30,13 @@ import ClaimsLedger from './ClaimsLedger.jsx';
 import AuditChainView from './AuditChainView.jsx';
 import PublicationReceiptModal from './PublicationReceiptModal.jsx';
 
-// BrandSentinel Logo Component
+// BrandSentinel Logo
 function BrandLogo({ compact = false }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="flex size-7 items-center justify-center border border-foreground/30 bg-foreground font-serif text-[13px] font-medium text-background">
-        B
-      </span>
-      <span className="font-serif text-[19px] tracking-tight text-foreground">
-        BrandSentinel
-      </span>
-      {!compact && (
-        <span className="ml-1 hidden border border-border px-1 py-[1px] font-mono text-[8px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
-          R2
-        </span>
-      )}
+    <div className="bs-logo">
+      <span className="bs-logo-square">B</span>
+      <span className="bs-logo-text">BrandSentinel</span>
+      {!compact && <span className="bs-logo-badge">R2</span>}
     </div>
   );
 }
@@ -117,13 +106,6 @@ const sixIdeas = [
   }
 ];
 
-const evidenceChecks = [
-  "The quoted span exists verbatim in the submitted content",
-  "The rule_id is published in the current rulebook",
-  "The guideline excerpt is a real quote from the rulebook",
-  "Claim findings reference an id that exists in the Claim Ledger"
-];
-
 const initialRules = [
   { id: 'R-TERM-01', title: 'Terminology & messaging · R-TERM-01', category: 'terminology', body: 'Always write the full product name “Lumora Glow Serum” on first mention.' },
   { id: 'R-CLM-03', title: 'Claims Policy · R-CLM-03', category: 'claims', body: 'Clinical superiority and speed claims require an approved trial registry and citation.' },
@@ -177,7 +159,7 @@ const initialDrafts = [
   }
 ];
 
-function detectFindings(text, rules) {
+function detectFindings(text) {
   const list = [];
   if (/Glow Serum/i.test(text) && !/Lumora Glow Serum/i.test(text)) {
     list.push({
@@ -191,8 +173,7 @@ function detectFindings(text, rules) {
       fix: 'Lumora Glow Serum',
       confidence: 96,
       intentScore: 0.61,
-      status: 'open',
-      comments: []
+      status: 'open'
     });
   }
   if (/MIRACLE/i.test(text)) {
@@ -207,8 +188,7 @@ function detectFindings(text, rules) {
       fix: 'breakthrough',
       confidence: 94,
       intentScore: 0.82,
-      status: 'open',
-      comments: []
+      status: 'open'
     });
   }
   if (/remove wrinkles in 7 days/i.test(text)) {
@@ -223,8 +203,7 @@ function detectFindings(text, rules) {
       fix: 'visibly smooth fine lines over time',
       confidence: 98,
       intentScore: 0.54,
-      status: 'open',
-      comments: []
+      status: 'open'
     });
   }
   return list;
@@ -242,21 +221,16 @@ const pageNotes = {
 };
 
 export default function App() {
-  const [page, setPage] = useState('home'); // 'home', 'demo', 'queue', 'review', 'rulebook', 'rules', 'audit', 'reliability', 'api', 'visual', 'submit'
-  const [activeRole, setActiveRole] = useState('reviewer'); // 'creator', 'reviewer', 'approver', 'admin'
-  const [rules, setRules] = useState(initialRules);
+  const [page, setPage] = useState('home');
+  const [activeRole, setActiveRole] = useState('reviewer');
   const [drafts, setDrafts] = useState(initialDrafts);
   const [selectedId, setSelectedId] = useState(1);
   const [queueFilter, setQueueFilter] = useState('all');
   const [receiptModal, setReceiptModal] = useState(null);
-  const [modal, setModal] = useState(null);
-  const [commentText, setCommentText] = useState('');
-  const [reasonText, setReasonText] = useState('');
 
   const currentPersona = personas.find(p => p.role === activeRole) || personas[1];
   const currentDraft = drafts.find(d => d.id === selectedId) || drafts[0];
-  const findings = detectFindings(currentDraft.content, rules);
-  const pendingFindings = findings.filter(f => f.status === 'open');
+  const findings = detectFindings(currentDraft.content);
 
   const go = (p) => {
     setPage(p);
@@ -281,347 +255,295 @@ export default function App() {
     setReceiptModal(currentDraft);
   };
 
-  // ----------------------------------------------------
-  // 1. LANDING PAGE VIEW
-  // ----------------------------------------------------
+  // ==========================================
+  // 1. LANDING PAGE
+  // ==========================================
   if (page === 'home') {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        {/* Institutional Sticky Header */}
-        <header className="sticky top-0 z-30 border-b border-border/80 bg-background/92 backdrop-blur">
-          <div className="mx-auto flex h-16 w-full max-w-[1180px] items-center justify-between px-5 sm:px-8">
-            <button onClick={() => go('home')} className="cursor-pointer">
+      <div style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
+        {/* Header */}
+        <header className="bs-header">
+          <div className="bs-header-inner">
+            <button onClick={() => go('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               <BrandLogo />
             </button>
-            <nav className="hidden items-center gap-7 text-[12px] text-muted-foreground md:flex">
-              <a href="#ideas" className="transition-colors hover:text-foreground">The six ideas</a>
-              <a href="#pipeline" className="transition-colors hover:text-foreground">How it works</a>
-              <a href="#evidence" className="transition-colors hover:text-foreground">Evidence</a>
-              <a href="#roles" className="transition-colors hover:text-foreground">Demo roles</a>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+              <a href="#ideas" style={{ color: 'var(--muted-foreground)', textDecoration: 'none', fontSize: '12px' }}>The six ideas</a>
+              <a href="#pipeline" style={{ color: 'var(--muted-foreground)', textDecoration: 'none', fontSize: '12px' }}>How it works</a>
+              <a href="#evidence" style={{ color: 'var(--muted-foreground)', textDecoration: 'none', fontSize: '12px' }}>Evidence</a>
+              <a href="#roles" style={{ color: 'var(--muted-foreground)', textDecoration: 'none', fontSize: '12px' }}>Demo roles</a>
             </nav>
-            <div className="flex items-center gap-3">
-              <button onClick={() => go('queue')} className="hidden text-[12px] text-muted-foreground hover:text-foreground sm:inline cursor-pointer">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button onClick={() => go('queue')} style={{ background: 'none', border: 'none', fontSize: '12px', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
                 Workspace
               </button>
-              <button
-                onClick={() => go('demo')}
-                className="btn btn-primary h-8 rounded-none px-4 text-[12px] cursor-pointer"
-              >
-                Enter the demo <ArrowRight className="ml-1.5 size-3.5" />
+              <button onClick={() => go('demo')} className="bs-btn bs-btn-primary">
+                Enter the demo <ArrowRight size={14} />
               </button>
             </div>
           </div>
         </header>
 
-        <main>
-          {/* Hero Section */}
-          <section className="mx-auto w-full max-w-[1180px] px-5 pb-14 pt-12 sm:px-8 sm:pt-16 lg:pb-20">
-            <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="h-[1px] w-8 bg-foreground/40" />
-                  <span className="label-caps">Round 2 prototype · Lumora demo workspace</span>
-                </div>
-                <h1 className="serif-display mt-7 text-[clamp(3.1rem,7.2vw,5.5rem)]">
-                  The brand gate<br />you can audit.
-                </h1>
-                <p className="mt-7 max-w-[46ch] text-[15px] leading-7 text-muted-foreground">
-                  BrandSentinel reviews content before it is published against a company's own guidelines. Findings arrive with evidence, a rule and a source excerpt. A human accepts, edits or rejects each one, and the decision trail is hash-chained.
-                </p>
-                <div className="mt-8 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => go('demo')}
-                    className="btn btn-primary h-11 rounded-none px-6 text-[13px] cursor-pointer"
-                  >
-                    Try the Lumora demo <ArrowRight className="ml-2 size-4" />
-                  </button>
-                  <a
-                    href="#pipeline"
-                    className="btn btn-outline h-11 rounded-none border-border px-6 text-[13px] cursor-pointer inline-flex items-center"
-                  >
-                    See the pipeline
-                  </a>
-                </div>
-                <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  No signup · one-click roles · synthetic brand, seeded data
-                </p>
-                <div className="mt-10 grid grid-cols-3 gap-px border border-border bg-border">
-                  {[["14", "typed rules"], ["6", "ledger claims"], ["05", "specialist reviewers"]].map(([s, r]) => (
-                    <div key={r} className="bg-card px-3 py-4">
-                      <p className="font-serif text-[28px] leading-none">{s}</p>
-                      <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">{r}</p>
-                    </div>
-                  ))}
-                </div>
+        {/* Hero Section */}
+        <section className="bs-hero-section">
+          <div className="bs-hero-grid">
+            {/* Left Hero Column */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ width: '32px', height: '1px', background: 'var(--foreground)', opacity: 0.4 }} />
+                <span className="label-caps">Round 2 prototype · Lumora demo workspace</span>
               </div>
-
-              {/* Specimen Card on Right */}
-              <div className="relative">
-                <div className="absolute -left-3 top-4 hidden h-[calc(100%-2rem)] w-[1px] bg-border lg:block" />
-                <div className="paper">
-                  <div className="flex items-center justify-between border-b border-border/80 px-5 py-3">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
-                      Specimen · Instagram caption · v3
-                    </span>
-                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8F4526]">
-                      <span className="size-1.5 rounded-full bg-[#A9552F]" /> 4 findings
-                    </span>
-                  </div>
-                  <div className="px-5 py-6">
-                    <p className="font-serif text-[24px] leading-[1.35]">
-                      <span className="finding-mark-critical">Glow Serum</span> is here — and it's a{" "}
-                      <span className="finding-mark-critical">MIRACLE</span> for tired skin. Clinically proven to{" "}
-                      <span className="finding-mark">remove wrinkles in 7 days</span>. Get yours before it sells out!!
-                    </p>
-                    <p className="mt-4 font-mono text-[10px] leading-5 text-muted-foreground">
-                      Caption colours: #FF2E93 on #F4EFE6 · <span className="finding-mark">1.9:1 contrast</span>
-                    </p>
-                  </div>
-                  <div className="border-t border-border/80 bg-[#A9552F]/[0.035] px-5 py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="border border-[#8F2F24]/40 px-1.5 py-[2px] font-mono text-[8px] uppercase tracking-[0.16em] text-[#8F2F24]">
-                        Critical
-                      </span>
-                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-                        Terminology & messaging · R-TERM-01
-                      </span>
-                      <span className="ml-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[#4F5C47]">
-                        <Check className="size-3" /> evidence verified
-                      </span>
-                    </div>
-                    <p className="mt-2 text-[12.5px] leading-6">
-                      “Glow Serum” drops the brand name. The rule requires the full product name on first mention.
-                    </p>
-                    <div className="mt-3 border-l border-border pl-3">
-                      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Guideline · Edition 4</p>
-                      <p className="mt-1 text-[11.5px] italic leading-5 text-muted-foreground">
-                        “Always write the full product name ‘Lumora Glow Serum’ on first mention.”
-                      </p>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2 text-[11px]">
-                      <span className="border border-border px-1.5 py-[2px] font-mono text-[9px] text-muted-foreground">FIX</span>
-                      <span className="font-mono text-[11px]">
-                        <span className="text-[#8F2F24] line-through">Glow Serum</span>{" "}
-                        <span className="text-[#4F5C47]">Lumora Glow Serum</span>
-                      </span>
-                      <span className="ml-auto font-mono text-[9px] text-muted-foreground">intent 0.61</span>
-                    </div>
-                  </div>
+              <h1 className="serif-display" style={{ fontSize: 'clamp(46px, 5.5vw, 76px)', margin: '24px 0 20px', letterSpacing: '-0.03em' }}>
+                The brand gate<br />you can audit.
+              </h1>
+              <p style={{ fontSize: '15px', lineHeight: 1.75, color: 'var(--muted-foreground)', maxWidth: '480px', margin: '0 0 28px' }}>
+                BrandSentinel reviews content before it is published against a company's own guidelines. Findings arrive with evidence, a rule and a source excerpt. A human accepts, edits or rejects each one, and the decision trail is hash-chained.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button onClick={() => go('demo')} className="bs-btn bs-btn-primary" style={{ padding: '12px 22px' }}>
+                  Try the Lumora demo <ArrowRight size={16} />
+                </button>
+                <a href="#pipeline" className="bs-btn bs-btn-outline" style={{ padding: '12px 22px' }}>
+                  See the pipeline
+                </a>
+              </div>
+              <p style={{ marginTop: '16px', fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--muted-foreground)' }}>
+                No signup · one-click roles · synthetic brand, seeded data
+              </p>
+              <div className="bs-stat-grid">
+                <div className="bs-stat-cell">
+                  <p>14</p>
+                  <p>typed rules</p>
                 </div>
-                <div className="mt-3 flex items-start justify-between gap-4 px-1">
-                  <p className="text-[10px] leading-4 text-muted-foreground">
-                    Every finding on the right carries the same six pieces of evidence.
-                  </p>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Fig. 01</span>
+                <div className="bs-stat-cell">
+                  <p>6</p>
+                  <p>ledger claims</p>
+                </div>
+                <div className="bs-stat-cell">
+                  <p>05</p>
+                  <p>specialist reviewers</p>
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* 4 Pillars Strip */}
-          <section className="border-y border-border/80 bg-card/40">
-            <div className="mx-auto grid w-full max-w-[1180px] gap-px bg-border/70 px-5 py-0 sm:px-8 md:grid-cols-4">
-              {[
-                ["The gate", "Content cannot be approved while a critical finding is unresolved."],
-                ["The evidence", "Verbatim spans, real rules, real quotes. Invented proof is dropped."],
-                ["The human", "Creator submits. Reviewer decides. Approver signs. Legal can be raised."],
-                ["The record", "Hash-chained audit and a PDF receipt for every approved version."]
-              ].map(([s, r]) => (
-                <div key={s} className="bg-background px-1 py-7 md:px-6">
-                  <p className="label-caps">{s}</p>
-                  <p className="mt-2 text-[12.5px] leading-6 text-muted-foreground">{r}</p>
+            {/* Right Hero Column: Specimen Card */}
+            <div>
+              <div className="bs-specimen-card">
+                <div className="bs-specimen-header">
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--muted-foreground)' }}>
+                    Specimen · Instagram caption · v3
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: '#8F4526' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#A9552F' }} />
+                    4 findings
+                  </span>
+                </div>
+                <div className="bs-specimen-body">
+                  <p className="font-serif" style={{ fontSize: '24px', lineHeight: 1.4, margin: 0 }}>
+                    <span className="finding-mark-critical">Glow Serum</span> is here — and it's a{" "}
+                    <span className="finding-mark-critical">MIRACLE</span> for tired skin. Clinically proven to{" "}
+                    <span className="finding-mark">remove wrinkles in 7 days</span>. Get yours before it sells out!!
+                  </p>
+                  <p style={{ marginTop: '16px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--muted-foreground)' }}>
+                    Caption colours: #FF2E93 on #F4EFE6 · <span className="finding-mark">1.9:1 contrast</span>
+                  </p>
+                </div>
+                <div className="bs-specimen-finding">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="bs-tag bs-tag-red">Critical</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>
+                      Terminology & messaging · R-TERM-01
+                    </span>
+                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'var(--font-mono)', fontSize: '9px', color: '#4F5C47' }}>
+                      <Check size={12} /> evidence verified
+                    </span>
+                  </div>
+                  <p style={{ margin: '10px 0 0', fontSize: '12.5px', lineHeight: 1.6 }}>
+                    “Glow Serum” drops the brand name. The rule requires the full product name on first mention.
+                  </p>
+                  <div style={{ marginTop: '12px', borderLeft: '2px solid var(--border)', paddingLeft: '12px' }}>
+                    <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>Guideline · Edition 4</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '11.5px', fontStyle: 'italic', color: 'var(--muted-foreground)' }}>
+                      “Always write the full product name ‘Lumora Glow Serum’ on first mention.”
+                    </p>
+                  </div>
+                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+                    <span style={{ border: '1px solid var(--border)', padding: '1px 5px', fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--muted-foreground)' }}>FIX</span>
+                    <span className="font-mono">
+                      <span style={{ textDecoration: 'line-through', color: '#8F2F24' }}>Glow Serum</span>{" "}
+                      <span style={{ color: '#4F5C47' }}>Lumora Glow Serum</span>
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--muted-foreground)' }}>intent 0.61</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '0 4px' }}>
+                <p style={{ margin: 0, fontSize: '10px', color: 'var(--muted-foreground)' }}>
+                  Every finding on the right carries the same six pieces of evidence.
+                </p>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>Fig. 01</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4 Pillars Strip */}
+        <section style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
+          <div className="bs-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'var(--border)' }}>
+            {[
+              ["The gate", "Content cannot be approved while a critical finding is unresolved."],
+              ["The evidence", "Verbatim spans, real rules, real quotes. Invented proof is dropped."],
+              ["The human", "Creator submits. Reviewer decides. Approver signs. Legal can be raised."],
+              ["The record", "Hash-chained audit and a PDF receipt for every approved version."]
+            ].map(([s, r]) => (
+              <div key={s} style={{ background: 'var(--background)', padding: '24px 20px' }}>
+                <p className="label-caps" style={{ margin: '0 0 8px' }}>{s}</p>
+                <p style={{ margin: 0, fontSize: '12.5px', lineHeight: 1.6, color: 'var(--muted-foreground)' }}>{r}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Problem Section */}
+        <section className="bs-container" style={{ padding: '80px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '48px' }}>
+            <div>
+              <p className="label-caps">The problem</p>
+              <h2 className="font-serif" style={{ fontSize: '38px', lineHeight: 1.15, margin: '12px 0 0' }}>
+                Content ships faster than the brand can check it.
+              </h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '14.5px', lineHeight: 1.75, color: 'var(--muted-foreground)' }}>
+              <p style={{ margin: 0 }}>
+                A single unclaimed promise in a paid ad can cost a week of removal requests and verification. An old product name stays in the search index long after the campaign ends. Style guides do not enforce themselves at the moment of publishing, and the people writing the copy are not the people who own the rules.
+              </p>
+              <p style={{ margin: 0 }}>
+                BrandSentinel sits between the draft and the publish button. It does not replace the brand team. It gives them a smaller queue, each item with evidence they can check in seconds, and a record of what they decided.
+              </p>
+              <div style={{ borderLeft: '2px solid var(--foreground)', paddingLeft: '20px', fontFamily: 'var(--font-serif)', fontSize: '20px', lineHeight: 1.45, color: 'var(--foreground)' }}>
+                “A finding that cannot show its evidence never reaches a human. That is the whole product.”
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* The Six Ideas */}
+        <section id="ideas" style={{ borderTop: '1px solid var(--border)', padding: '80px 0' }}>
+          <div className="bs-container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' }}>
+              <div>
+                <p className="label-caps">Six ideas</p>
+                <h2 className="font-serif" style={{ fontSize: '42px', margin: '12px 0 0' }}>What makes this different</h2>
+              </div>
+              <p style={{ maxWidth: '420px', fontSize: '12.5px', lineHeight: 1.6, color: 'var(--muted-foreground)', margin: 0 }}>
+                Each one exists in the running product. If it were not built, it would not be on this list.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: 'var(--border)', border: '1px solid var(--border)' }}>
+              {sixIdeas.map(s => (
+                <div key={s.n} style={{ background: 'var(--card)', padding: '28px 24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--muted-foreground)' }}>{s.n}</span>
+                    <span style={{ width: '24px', height: '1px', background: 'var(--border)' }} />
+                  </div>
+                  <h3 className="font-serif" style={{ fontSize: '22px', margin: '20px 0 10px' }}>{s.title}</h3>
+                  <p style={{ fontSize: '12.5px', lineHeight: 1.65, color: 'var(--muted-foreground)', margin: 0 }}>{s.body}</p>
                 </div>
               ))}
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Problem Section */}
-          <section className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
-            <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr]">
-              <div>
-                <p className="label-caps">The problem</p>
-                <h2 className="mt-4 font-serif text-[34px] leading-[1.1] sm:text-[40px]">
-                  Content ships faster than the brand can check it.
-                </h2>
-              </div>
-              <div className="space-y-5 text-[14.5px] leading-7 text-muted-foreground lg:pl-10">
-                <p>
-                  A single unclaimed promise in a paid ad can cost a week of removal requests and verification. An old product name stays in the search index long after the campaign ends. Style guides do not enforce themselves at the moment of publishing, and the people writing the copy are not the people who own the rules.
-                </p>
-                <p>
-                  BrandSentinel sits between the draft and the publish button. It does not replace the brand team. It gives them a smaller queue, each item with evidence they can check in seconds, and a record of what they decided.
-                </p>
-                <div className="border-l-2 border-foreground/60 pl-5 font-serif text-[20px] leading-[1.45] text-foreground">
-                  “A finding that cannot show its evidence never reaches a human. That is the whole product.”
-                </div>
-              </div>
+        {/* Pipeline Section */}
+        <section id="pipeline" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)', padding: '80px 0' }}>
+          <div className="bs-container">
+            <p className="label-caps">The pipeline</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '12px 0 40px' }}>
+              <h2 className="font-serif" style={{ fontSize: '42px', margin: 0 }}>Two lanes, one gate</h2>
+              <p style={{ maxWidth: '440px', fontSize: '12.5px', lineHeight: 1.6, color: 'var(--muted-foreground)', margin: 0 }}>
+                The fast lane is deterministic and returns in milliseconds. The deep lane runs five reviewers in parallel, then a verifier that can only delete, never add.
+              </p>
             </div>
-          </section>
-
-          {/* The Six Ideas */}
-          <section id="ideas" className="border-t border-border/80">
-            <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
-              <div className="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                  <p className="label-caps">Six ideas</p>
-                  <h2 className="mt-3 font-serif text-[36px] leading-none sm:text-[44px]">What makes this different</h2>
-                </div>
-                <p className="max-w-[38ch] text-[12.5px] leading-6 text-muted-foreground">
-                  Each one exists in the running product. If it were not built, it would not be on this list.
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1.05fr', gap: '16px', alignItems: 'center' }}>
+              <div className="bs-card" style={{ padding: '24px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--muted-foreground)', margin: '0 0 8px' }}>
+                  Lane 01 · deterministic · &lt; 1s
                 </p>
-              </div>
-              <div className="mt-10 grid gap-px border border-border bg-border md:grid-cols-2 lg:grid-cols-3">
-                {sixIdeas.map(s => (
-                  <div key={s.n} className="group bg-card p-6 transition-colors hover:bg-background">
-                    <div className="flex items-baseline justify-between">
-                      <span className="font-mono text-[10px] tracking-[0.12em] text-muted-foreground">{s.n}</span>
-                      <span className="h-[1px] w-6 bg-border transition-all group-hover:w-10 group-hover:bg-foreground/40" />
-                    </div>
-                    <h3 className="mt-6 font-serif text-[22px] leading-tight">{s.title}</h3>
-                    <p className="mt-3 text-[12.5px] leading-6 text-muted-foreground">{s.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* The Pipeline */}
-          <section id="pipeline" className="border-t border-border/80 bg-card/50">
-            <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
-              <p className="label-caps">The pipeline</p>
-              <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-                <h2 className="max-w-[18ch] font-serif text-[36px] leading-[1.05] sm:text-[44px]">Two lanes, one gate</h2>
-                <p className="max-w-[44ch] text-[12.5px] leading-6 text-muted-foreground">
-                  The fast lane is deterministic and returns in milliseconds. The deep lane runs five reviewers in parallel, then a verifier that can only delete, never add.
-                </p>
-              </div>
-              <div className="mt-10 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1.05fr]">
-                {/* Lane 01 */}
-                <div className="paper p-5">
-                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Lane 01 · deterministic · &lt; 1s</p>
-                  <h3 className="mt-2 font-serif text-[24px]">Fast lane</h3>
-                  <ul className="mt-4 space-y-2.5 border-t border-border/70 pt-4">
-                    {["Glossary and banned terms", "Product naming and casing", "WCAG contrast ratio", "Missing alt text", "Palette distance in CIELAB"].map(s => (
-                      <li key={s} className="flex items-start gap-2 text-[12px] leading-5">
-                        <Minus className="mt-[3px] size-3 shrink-0 text-muted-foreground" /> {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="hidden items-center justify-center lg:flex">
-                  <ArrowRight className="size-4 text-muted-foreground" />
-                </div>
-                {/* Lane 02 */}
-                <div className="paper p-5">
-                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Lane 02 · judgment · parallel</p>
-                  <h3 className="mt-2 font-serif text-[24px]">Deep lane</h3>
-                  <ul className="mt-4 space-y-2.5 border-t border-border/70 pt-4">
-                    {["Tone & voice", "Terminology & messaging", "Claims against the ledger", "Visual consistency", "Accessibility reading"].map(s => (
-                      <li key={s} className="flex items-start gap-2 text-[12px] leading-5">
-                        <Minus className="mt-[3px] size-3 shrink-0 text-muted-foreground" /> {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="hidden items-center justify-center lg:flex">
-                  <ArrowRight className="size-4 text-muted-foreground" />
-                </div>
-                {/* Evidence Gate */}
-                <div className="border border-foreground/25 bg-foreground p-5 text-background">
-                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-background/60">Evidence gate</p>
-                  <h3 className="mt-2 font-serif text-[24px] text-background">Verifier → Synthesizer</h3>
-                  <p className="mt-4 border-t border-background/20 pt-4 text-[12px] leading-6 text-background/75">
-                    Duplicates are merged, severity decides order, fixes get an intent score. Dropped findings are counted and shown, not hidden.
-                  </p>
-                  <button
-                    onClick={() => go('demo')}
-                    className="mt-5 inline-flex items-center gap-1.5 border-b border-background/40 pb-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-background cursor-pointer"
-                  >
-                    Run it on the sample <ArrowRight className="size-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Evidence or Silence */}
-          <section id="evidence" className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
-            <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
-              <div>
-                <p className="label-caps">Evidence or silence</p>
-                <h2 className="mt-3 font-serif text-[36px] leading-[1.05] sm:text-[42px]">
-                  Four checks<br />before a finding<br />reaches you.
-                </h2>
-                <p className="mt-5 max-w-[38ch] text-[13px] leading-6 text-muted-foreground">
-                  Models are useful readers and unreliable witnesses. So we do not trust their output by default. A dropped finding is logged with its reason, and the report shows how many were suppressed.
-                </p>
-              </div>
-              <div className="border border-border">
-                {evidenceChecks.map((s, i) => (
-                  <div key={s} className="flex gap-4 border-b border-border/70 px-5 py-5 last:border-b-0">
-                    <span className="font-mono text-[10px] text-muted-foreground">0{i + 1}</span>
-                    <div className="flex-1">
-                      <p className="text-[13.5px] leading-6">{s}</p>
-                    </div>
-                    <Check className="mt-1 size-4 shrink-0 text-[#4F5C47]" strokeWidth={1.6} />
-                  </div>
-                ))}
-                <div className="bg-secondary/60 px-5 py-4">
-                  <p className="font-mono text-[10px] leading-5 text-muted-foreground">
-                    FAILURE MODES TARGETED · tone drift · naming · unsupported claim · expired claim · visual inconsistency · accessibility
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Demo Roles */}
-          <section id="roles" className="border-t border-border/80 bg-card/60">
-            <div className="mx-auto w-full max-w-[1180px] px-5 py-16 sm:px-8 sm:py-20">
-              <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-                <div>
-                  <p className="label-caps">Judge access</p>
-                  <h2 className="mt-3 font-serif text-[36px] leading-[1.05] sm:text-[42px]">
-                    Four roles.<br />No signup.
-                  </h2>
-                  <p className="mt-5 max-w-[40ch] text-[13.5px] leading-6 text-muted-foreground">
-                    Enter as any Lumora persona with one click. The role switcher stays in the header, so you can submit as Creator, decide as Reviewer and sign off as Approver without changing accounts. Every switch is audited.
-                  </p>
-                  <button
-                    onClick={() => go('demo')}
-                    className="btn btn-primary mt-6 h-11 rounded-none px-6 text-[13px] cursor-pointer"
-                  >
-                    Open the demo screen <ArrowRight className="ml-2 size-4" />
-                  </button>
-                </div>
-                <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
-                  {personas.map(p => (
-                    <button
-                      key={p.role}
-                      onClick={() => { setActiveRole(p.role); go('queue'); }}
-                      className="bg-card p-5 text-left transition-colors hover:bg-background cursor-pointer"
-                    >
-                      <p className="label-caps text-[9px]">{p.title}</p>
-                      <p className="mt-2 font-serif text-[20px] leading-tight">{p.name}</p>
-                      <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">{p.detail}</p>
-                    </button>
+                <h3 className="font-serif" style={{ fontSize: '24px', margin: '0 0 16px' }}>Fast lane</h3>
+                <ul style={{ listStyle: 'none', padding: '16px 0 0', margin: 0, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {["Glossary and banned terms", "Product naming and casing", "WCAG contrast ratio", "Missing alt text", "Palette distance in CIELAB"].map(item => (
+                    <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                      <Minus size={12} color="var(--muted-foreground)" /> {item}
+                    </li>
                   ))}
-                </div>
+                </ul>
+              </div>
+              <ArrowRight size={18} color="var(--muted-foreground)" />
+              <div className="bs-card" style={{ padding: '24px' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--muted-foreground)', margin: '0 0 8px' }}>
+                  Lane 02 · judgment · parallel
+                </p>
+                <h3 className="font-serif" style={{ fontSize: '24px', margin: '0 0 16px' }}>Deep lane</h3>
+                <ul style={{ listStyle: 'none', padding: '16px 0 0', margin: 0, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {["Tone & voice", "Terminology & messaging", "Claims against the ledger", "Visual consistency", "Accessibility reading"].map(item => (
+                    <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                      <Minus size={12} color="var(--muted-foreground)" /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <ArrowRight size={18} color="var(--muted-foreground)" />
+              <div className="bs-dark-card">
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(244, 239, 230, 0.6)', margin: '0 0 8px' }}>
+                  Evidence gate
+                </p>
+                <h3 className="font-serif" style={{ fontSize: '24px', margin: '0 0 16px', color: '#f4efe6' }}>Verifier → Synthesizer</h3>
+                <p style={{ borderTop: '1px solid rgba(244, 239, 230, 0.2)', paddingTop: '16px', fontSize: '12px', lineHeight: 1.7, color: 'rgba(244, 239, 230, 0.75)', margin: 0 }}>
+                  Duplicates are merged, severity decides order, fixes get an intent score. Dropped findings are counted and shown, not hidden.
+                </p>
+                <button onClick={() => go('demo')} style={{ marginTop: '20px', background: 'none', border: 'none', borderBottom: '1px solid rgba(244, 239, 230, 0.4)', paddingBottom: '2px', fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.14em', color: '#f4efe6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  Run it on the sample <ArrowRight size={12} />
+                </button>
               </div>
             </div>
-          </section>
-        </main>
+          </div>
+        </section>
 
-        {/* Institutional Footer */}
-        <footer className="border-t border-border/80">
-          <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <div className="flex items-center gap-3">
-              <BrandLogo compact={true} />
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                Round 2 · October 2026
-              </span>
+        {/* Roles Section */}
+        <section id="roles" style={{ borderTop: '1px solid var(--border)', padding: '80px 0' }}>
+          <div className="bs-container">
+            <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr', gap: '48px' }}>
+              <div>
+                <p className="label-caps">Judge access</p>
+                <h2 className="font-serif" style={{ fontSize: '42px', margin: '12px 0 20px' }}>Four roles.<br />No signup.</h2>
+                <p style={{ fontSize: '13.5px', lineHeight: 1.7, color: 'var(--muted-foreground)', maxWidth: '420px', margin: '0 0 24px' }}>
+                  Enter as any Lumora persona with one click. The role switcher stays in the header, so you can submit as Creator, decide as Reviewer and sign off as Approver without changing accounts. Every switch is audited.
+                </p>
+                <button onClick={() => go('demo')} className="bs-btn bs-btn-primary">
+                  Open the demo screen <ArrowRight size={14} />
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: 'var(--border)', border: '1px solid var(--border)' }}>
+                {personas.map(p => (
+                  <div key={p.role} onClick={() => { setActiveRole(p.role); go('queue'); }} style={{ background: 'var(--card)', padding: '24px', cursor: 'pointer', transition: 'background-color 0.15s ease' }}>
+                    <p className="label-caps" style={{ margin: '0 0 8px' }}>{p.title}</p>
+                    <p className="font-serif" style={{ fontSize: '20px', margin: '0 0 8px', color: 'var(--foreground)' }}>{p.name}</p>
+                    <p style={{ fontSize: '11.5px', lineHeight: 1.6, color: 'var(--muted-foreground)', margin: 0 }}>{p.detail}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="max-w-[62ch] text-[10.5px] leading-5 text-muted-foreground">
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 0' }}>
+          <div className="bs-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <BrandLogo compact={true} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>Round 2 · October 2026</span>
+            </div>
+            <p style={{ fontSize: '10.5px', color: 'var(--muted-foreground)', maxWidth: '580px', margin: 0 }}>
               Lumora is a synthetic brand created for this prototype. All content, claims and studies are fictional. Model output is treated as a proposal; a human makes every decision.
             </p>
           </div>
@@ -630,39 +552,37 @@ export default function App() {
     );
   }
 
-  // ----------------------------------------------------
-  // 2. DEMO ROLE SELECTION VIEW
-  // ----------------------------------------------------
+  // ==========================================
+  // 2. DEMO ROLE PICKER SCREEN
+  // ==========================================
   if (page === 'demo') {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border/80">
-          <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-5 sm:px-8">
-            <button onClick={() => go('home')} className="cursor-pointer">
+      <div style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
+        <header className="bs-header">
+          <div className="bs-header-inner">
+            <button onClick={() => go('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               <BrandLogo />
             </button>
-            <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--muted-foreground)' }}>
               Demo access · no signup
             </span>
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1100px] px-5 py-10 sm:px-8 sm:py-14">
-          <div className="grid gap-12 lg:grid-cols-[0.78fr_1.22fr]">
+        <main className="bs-container" style={{ padding: '60px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '48px' }}>
             <div>
               <p className="label-caps">Lumora Studio · synthetic brand</p>
-              <h1 className="serif-display mt-5 text-[clamp(2.6rem,5vw,3.6rem)]">
-                Choose a seat<br />at the gate.
-              </h1>
-              <p className="mt-5 max-w-[38ch] text-[13.5px] leading-6 text-muted-foreground">
+              <h1 className="serif-display" style={{ fontSize: '48px', margin: '16px 0 20px' }}>Choose a seat<br />at the gate.</h1>
+              <p style={{ fontSize: '13.5px', lineHeight: 1.7, color: 'var(--muted-foreground)', maxWidth: '420px', margin: '0 0 24px' }}>
                 One click signs you into the seeded Lumora workspace under a demo persona. Use the role switcher in the header to move between seats without signing up again.
               </p>
-              <div className="mt-8 border border-border bg-card/60 p-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="size-4 text-[#4F5C47]" strokeWidth={1.5} />
-                  <p className="font-mono text-[9px] uppercase tracking-[0.14em]">What is real here</p>
+              <div className="bs-card" style={{ padding: '20px', background: 'rgba(251, 247, 241, 0.6)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <ShieldCheck size={16} color="#4F5C47" />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em' }}>What is real here</span>
                 </div>
-                <ul className="mt-3 space-y-2 text-[11.5px] leading-5 text-muted-foreground">
+                <ul style={{ paddingLeft: '16px', margin: 0, fontSize: '11.5px', lineHeight: 1.8, color: 'var(--muted-foreground)' }}>
                   <li>The rulebook, claims ledger and guideline document are seeded.</li>
                   <li>Model calls are live. Findings are stored, not mocked.</li>
                   <li>Every role switch and decision is written to the audit chain.</li>
@@ -671,26 +591,26 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: 'var(--border)', border: '1px solid var(--border)' }}>
               {personas.map((p, i) => (
-                <button
+                <div
                   key={p.role}
                   onClick={() => { setActiveRole(p.role); go('queue'); }}
-                  className="group flex min-h-[210px] flex-col items-start bg-card p-5 text-left transition-colors hover:bg-background cursor-pointer"
+                  style={{ background: 'var(--card)', padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: '210px' }}
                 >
-                  <div className="flex w-full items-start justify-between">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--muted-foreground)' }}>
                       0{i + 1} · {p.title}
                     </span>
-                    <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+                    <ArrowRight size={14} color="var(--muted-foreground)" />
                   </div>
-                  <h2 className="mt-6 font-serif text-[27px] leading-none">{p.name}</h2>
-                  <p className="mt-1.5 font-serif text-[15px] italic text-muted-foreground">{p.line}</p>
-                  <p className="mt-3 text-[11.5px] leading-5 text-muted-foreground">{p.detail}</p>
-                  <span className="mt-auto pt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-foreground/70">
+                  <h2 className="font-serif" style={{ fontSize: '27px', margin: '20px 0 4px', color: 'var(--foreground)' }}>{p.name}</h2>
+                  <p className="font-serif" style={{ fontSize: '15px', fontStyle: 'italic', color: 'var(--muted-foreground)', margin: '0 0 12px' }}>{p.line}</p>
+                  <p style={{ fontSize: '11.5px', lineHeight: 1.6, color: 'var(--muted-foreground)', margin: '0 0 16px' }}>{p.detail}</p>
+                  <span style={{ marginTop: 'auto', fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--foreground)' }}>
                     Enter as {p.title.toLowerCase()}
                   </span>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -699,510 +619,412 @@ export default function App() {
     );
   }
 
-  // ----------------------------------------------------
-  // 3. APP SHELL & WORKSPACE VIEW (BrandSentinel Layout)
-  // ----------------------------------------------------
+  // ==========================================
+  // 3. APP WORKSPACE (BrandSentinel Layout)
+  // ==========================================
   const currentNavTitle = pageNotes[page]?.title || "Workspace";
   const currentNavNote = pageNotes[page]?.note || "Brand governance, with evidence.";
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-[1440px]">
-        {/* Institutional Left Sidebar */}
-        <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-border/80 px-5 py-6 lg:flex">
-          <button onClick={() => go('home')} className="px-1 text-left cursor-pointer">
-            <BrandLogo />
-          </button>
-          <p className="mt-3 px-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Lumora Studio · demo
-          </p>
+    <div className="bs-app-layout">
+      {/* Sidebar */}
+      <aside className="bs-sidebar">
+        <button onClick={() => go('home')} style={{ background: 'none', border: 'none', padding: '0 4px', cursor: 'pointer', textAlign: 'left' }}>
+          <BrandLogo />
+        </button>
+        <p style={{ margin: '10px 0 28px', padding: '0 4px', fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--muted-foreground)' }}>
+          Lumora Studio · demo
+        </p>
 
-          <nav className="mt-9 flex flex-col gap-[2px]">
-            {[
-              { id: 'queue', label: 'Review queue', icon: LayoutDashboard, count: drafts.filter(d => d.status === 'In review').length },
-              { id: 'submit', label: 'New submission', icon: FilePlus2 },
-              { id: 'rulebook', label: 'Rulebook', icon: BookOpen },
-              { id: 'rules', label: 'Drift & rule health', icon: Activity },
-              { id: 'audit', label: 'Audit trail', icon: History },
-              { id: 'api', label: 'API & webhooks', icon: Key },
-              { id: 'reliability', label: 'Reliability', icon: Cpu },
-              { id: 'visual', label: 'Visual Studio', icon: Palette }
-            ].map(item => {
-              const Icon = item.icon;
-              const isActive = page === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => go(item.id)}
-                  className={`group flex items-center gap-3 border-l-2 px-3 py-[9px] text-[13px] transition-colors cursor-pointer text-left ${
-                    isActive
-                      ? "border-foreground bg-foreground/[0.045] text-foreground font-medium"
-                      : "border-transparent text-muted-foreground hover:bg-foreground/[0.025] hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="size-[15px] opacity-70" strokeWidth={1.5} />
-                  <span>{item.label}</span>
-                  {item.count !== undefined && item.count > 0 && (
-                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-                      {item.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {[
+            { id: 'queue', label: 'Review queue', icon: LayoutDashboard, count: drafts.filter(d => d.status === 'In review').length },
+            { id: 'submit', label: 'New submission', icon: FilePlus2 },
+            { id: 'rulebook', label: 'Rulebook', icon: BookOpen },
+            { id: 'rules', label: 'Drift & rule health', icon: Activity },
+            { id: 'audit', label: 'Audit trail', icon: History },
+            { id: 'api', label: 'API & webhooks', icon: Key },
+            { id: 'reliability', label: 'Reliability', icon: Cpu },
+            { id: 'visual', label: 'Visual Studio', icon: Palette }
+          ].map(item => {
+            const Icon = item.icon;
+            const isActive = page === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => go(item.id)}
+                className={`bs-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={15} style={{ opacity: 0.7 }} />
+                <span>{item.label}</span>
+                {item.count !== undefined && item.count > 0 && (
+                  <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--muted-foreground)' }}>
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
 
-          {/* Signed-in Persona at Bottom */}
-          <div className="mt-auto space-y-4">
-            <div className="border border-border/80 p-3">
-              <p className="label-caps text-[9px]">Signed in</p>
-              <p className="mt-1 font-serif text-[16px] leading-tight">{currentPersona.name}</p>
-              <p className="mt-0.5 text-[11px] capitalize text-muted-foreground">
-                {currentPersona.title} · Lumora Studio
-              </p>
-              <div className="mt-3 flex items-center justify-between border-t border-border/70 pt-2">
-                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                  14 rules · 6 claims
-                </span>
-                <button onClick={() => go('demo')} className="text-muted-foreground hover:text-foreground cursor-pointer" title="Switch persona">
-                  <LogOut className="size-[14px]" strokeWidth={1.5} />
-                </button>
-              </div>
-            </div>
-            <p className="px-1 text-[10px] leading-4 text-muted-foreground/80">
-              Synthetic brand and seeded data. Nothing here is a real client.
+        {/* Persona Box at Bottom */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="bs-card" style={{ padding: '14px' }}>
+            <p className="label-caps" style={{ margin: '0 0 4px' }}>Signed in</p>
+            <p className="font-serif" style={{ fontSize: '16px', margin: '0 0 2px' }}>{currentPersona.name}</p>
+            <p style={{ fontSize: '11px', textTransform: 'capitalize', color: 'var(--muted-foreground)', margin: 0 }}>
+              {currentPersona.title} · Lumora Studio
             </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--muted-foreground)' }}>
+                14 rules · 6 claims
+              </span>
+              <button onClick={() => go('demo')} title="Switch seat" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)' }}>
+                <LogOut size={13} />
+              </button>
+            </div>
           </div>
-        </aside>
+          <p style={{ margin: 0, padding: '0 4px', fontSize: '10px', lineHeight: 1.5, color: 'var(--muted-foreground)' }}>
+            Synthetic brand and seeded data. Nothing here is a real client.
+          </p>
+        </div>
+      </aside>
 
-        {/* Main Content Area */}
-        <div className="min-w-0 flex-1">
-          {/* Top Header Bar */}
-          <header className="sticky top-0 z-20 border-b border-border/80 bg-background/95 backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-7">
-              <div className="flex items-center gap-4">
-                <button onClick={() => go('home')} className="lg:hidden cursor-pointer">
-                  <BrandLogo compact={true} />
-                </button>
-                <div className="hidden lg:block">
-                  <p className="label-caps text-[9px]">Lumora Studio</p>
-                  <h1 className="mt-0.5 font-serif text-[22px] leading-none">{currentNavTitle}</h1>
-                </div>
-              </div>
+      {/* Main Content Area */}
+      <div className="bs-main-content">
+        {/* Topbar */}
+        <header className="bs-topbar">
+          <div>
+            <p className="label-caps" style={{ margin: 0 }}>Lumora Studio</p>
+            <h1 className="font-serif" style={{ fontSize: '22px', margin: '2px 0 0' }}>{currentNavTitle}</h1>
+          </div>
 
-              <div className="flex items-center gap-3">
-                {/* Role Switcher Pill */}
-                <div className="flex items-center gap-2">
-                  <span className="label-caps text-[9px] hidden sm:inline">Acting as</span>
-                  <select
-                    value={activeRole}
-                    onChange={(e) => switchRole(e.target.value)}
-                    className="h-8 rounded-none border border-border bg-card px-2.5 text-[12px] capitalize cursor-pointer focus:outline-none"
-                  >
-                    {personas.map(p => (
-                      <option key={p.role} value={p.role}>{p.title} ({p.name})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  onClick={() => go('submit')}
-                  className="btn btn-primary h-8 rounded-none px-3 text-[12px] cursor-pointer"
-                >
-                  <FilePlus2 className="mr-1.5 size-3.5" strokeWidth={1.6} />
-                  Submit content
-                </button>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="label-caps" style={{ margin: 0 }}>Acting as</span>
+              <select
+                value={activeRole}
+                onChange={(e) => switchRole(e.target.value)}
+                style={{ height: '32px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', padding: '0 8px', fontSize: '12px', cursor: 'pointer' }}
+              >
+                {personas.map(p => (
+                  <option key={p.role} value={p.role}>{p.title} ({p.name})</option>
+                ))}
+              </select>
             </div>
 
-            {/* Mobile horizontal nav */}
-            <nav className="flex gap-1 overflow-x-auto border-t border-border/60 px-3 py-2 lg:hidden">
-              {[
-                { id: 'queue', label: 'Queue' },
-                { id: 'submit', label: 'Submit' },
-                { id: 'rulebook', label: 'Rulebook' },
-                { id: 'rules', label: 'Drift' },
-                { id: 'audit', label: 'Audit' },
-                { id: 'api', label: 'API' },
-                { id: 'reliability', label: 'Reliability' },
-                { id: 'visual', label: 'Visual' }
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => go(t.id)}
-                  className={`whitespace-nowrap px-2.5 py-1 text-[11px] cursor-pointer ${
-                    page === t.id ? "bg-foreground text-background" : "text-muted-foreground"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </nav>
-          </header>
+            <button onClick={() => go('submit')} className="bs-btn bs-btn-primary" style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}>
+              <FilePlus2 size={13} /> Submit content
+            </button>
+          </div>
+        </header>
 
-          <main className="px-4 py-6 sm:px-7 sm:py-8">
-            {/* Page Header Note */}
-            <div className="mb-6 hidden border-b border-border/70 pb-4 lg:block">
-              <p className="prose-note max-w-2xl">{currentNavNote}</p>
-            </div>
+        {/* Content Body */}
+        <main style={{ padding: '28px' }}>
+          <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px' }}>
+            <p className="prose-note" style={{ margin: 0 }}>{currentNavNote}</p>
+          </div>
 
-            {/* TAB: REVIEW QUEUE (AppDashboard) */}
-            {page === 'queue' && (
-              <div className="grid gap-6 xl:grid-cols-[1.55fr_0.85fr]">
-                <div className="min-w-0">
-                  <section className="border border-border bg-card">
-                    <div className="flex flex-col gap-4 border-b border-border/80 px-5 py-5 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <p className="label-caps">Lumora Studio · live queue</p>
-                        <h2 className="mt-2 font-serif text-[30px] leading-none">The gate, this morning</h2>
-                        <p className="mt-2 max-w-[52ch] text-[12px] leading-5 text-muted-foreground">
-                          Open a submission to work its findings. The whole loop runs on seeded Lumora data, with live model review.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => go('submit')}
-                        className="btn btn-primary h-9 rounded-none px-4 text-[12px] cursor-pointer"
-                      >
-                        <FilePlus2 className="mr-2 size-3.5" /> New submission
-                      </button>
-                    </div>
-
-                    {/* 4 Counters Grid */}
-                    <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-                      {[
-                        ["Awaiting review", drafts.filter(d => d.status === 'In review').length],
-                        ["Findings", drafts.reduce((acc, d) => acc + d.findingCount, 0)],
-                        ["Decided", drafts.filter(d => d.status === 'Changes requested').length],
-                        ["Approved", drafts.filter(d => d.status === 'Approved').length]
-                      ].map(([s, t]) => (
-                        <div key={s} className="bg-card px-4 py-4">
-                          <p className="font-serif text-[28px] leading-none">{String(t)}</p>
-                          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground">{s}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Filter bar */}
-                    <div className="flex items-center justify-between border-y border-border/80 px-5 py-2.5">
-                      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground">Submissions</p>
-                      <div className="flex gap-1">
-                        {["all", "open"].map(s => (
-                          <button
-                            key={s}
-                            onClick={() => setQueueFilter(s)}
-                            className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] cursor-pointer ${
-                              queueFilter === s
-                                ? "bg-foreground text-background"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {s === 'all' ? 'All' : 'Open'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Submissions List */}
+          {/* TAB: REVIEW QUEUE (DASHBOARD) */}
+          {page === 'queue' && (
+            <div className="bs-queue-grid">
+              {/* Left Column: Live Queue Table */}
+              <div>
+                <div className="bs-card">
+                  <div className="bs-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
-                      {drafts
-                        .filter(d => queueFilter === 'all' ? true : d.status !== 'Approved')
-                        .map(s => (
-                          <div
-                            key={s.id}
-                            onClick={() => { setSelectedId(s.id); go('review'); }}
-                            className="group grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border/60 px-5 py-4 transition-colors last:border-b-0 hover:bg-background cursor-pointer"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate font-serif text-[18px] leading-tight">{s.title}</p>
-                                {s.legalFlag && (
-                                  <span className="border border-[#8F2F24]/50 px-1.5 py-[1px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#8F2F24]">
-                                    Legal
-                                  </span>
-                                )}
-                              </div>
-                              <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
-                                {s.channel} · v{s.version} · {s.creatorName} · {s.updatedAt}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="hidden text-right sm:block">
-                                <p className="font-serif text-[18px] leading-none">{s.findingCount}</p>
-                                <p className="font-mono text-[8px] uppercase tracking-[0.12em] text-muted-foreground">findings</p>
-                              </div>
-                              <span className={`tag ${s.status === 'Approved' ? 'tag-green' : s.status === 'In review' ? 'tag-amber' : 'tag-subtle'}`}>
-                                {s.status}
-                              </span>
-                              <ArrowRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-                            </div>
-                          </div>
-                        ))}
+                      <p className="label-caps" style={{ margin: 0 }}>Lumora Studio · live queue</p>
+                      <h2 className="font-serif" style={{ fontSize: '30px', margin: '6px 0 4px' }}>The gate, this morning</h2>
+                      <p style={{ fontSize: '12px', color: 'var(--muted-foreground)', margin: 0 }}>
+                        Open a submission to work its findings. The whole loop runs on seeded Lumora data, with live model review.
+                      </p>
                     </div>
-                  </section>
-
-                  {/* Two Minute Path */}
-                  <section className="mt-6 border border-border bg-card">
-                    <div className="flex items-center justify-between border-b border-border/80 px-5 py-3">
-                      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground">The two-minute path</p>
-                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-                        Creator → Reviewer → Approver
-                      </span>
-                    </div>
-                    <div className="grid gap-px bg-border sm:grid-cols-4">
-                      {[
-                        ["01", "Submit", "Load the Lumora caption. Fast lane flags issues immediately."],
-                        ["02", "Review", "Specialist reviewers report. The verifier suppresses anything unsupported."],
-                        ["03", "Decide", "Accept, edit or reject. Approve with the Approver role."],
-                        ["04", "Receipt", "Export the PDF. Check the audit chain from the sidebar."]
-                      ].map(([s, t, i]) => (
-                        <div key={s} className="bg-card px-4 py-4">
-                          <p className="font-mono text-[9px] text-muted-foreground">{s}</p>
-                          <p className="mt-2 font-serif text-[17px]">{t}</p>
-                          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{i}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                </div>
-
-                {/* Right Column / Brand Pack Side Panel */}
-                <aside className="space-y-6">
-                  <section className="border border-border bg-card p-5">
-                    <div className="flex items-center justify-between">
-                      <p className="label-caps">Active brand pack</p>
-                      <span className="border border-[#6F7D66]/50 px-1.5 py-[2px] font-mono text-[8px] uppercase tracking-[0.14em] text-[#4F5C47]">
-                        Published
-                      </span>
-                    </div>
-                    <p className="mt-3 font-serif text-[26px] leading-none">Lumora</p>
-                    <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">Edition 4 · Q4 2026</p>
-                    <div className="mt-4 flex gap-1.5">
-                      {["#1C1917", "#8F2F24", "#A9552F", "#4F5C47", "#D4C7B5"].map(hex => (
-                        <div key={hex} className="h-7 flex-1 border border-black/10" style={{ backgroundColor: hex }} title={hex} />
-                      ))}
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-px bg-border">
-                      {[["Rules", 14], ["Claims", 6], ["Expiring / expired", 1], ["Model calls", 42]].map(([s, t]) => (
-                        <div key={s} className="bg-card px-3 py-2.5">
-                          <p className="font-serif text-[19px] leading-none">{String(t)}</p>
-                          <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-muted-foreground">{s}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => go('rulebook')}
-                      className="mt-4 inline-flex items-center gap-1.5 border-b border-foreground/25 pb-0.5 font-mono text-[9px] uppercase tracking-[0.13em] cursor-pointer"
-                    >
-                      Open the rulebook <ArrowRight className="size-3" />
+                    <button onClick={() => go('submit')} className="bs-btn bs-btn-primary" style={{ fontSize: '12px', padding: '7px 14px' }}>
+                      <FilePlus2 size={14} /> New submission
                     </button>
-                  </section>
+                  </div>
 
-                  {/* Shortcuts Panel */}
-                  <section className="border border-border bg-card p-5">
-                    <p className="label-caps">Shortcuts</p>
-                    <div className="mt-3 divide-y divide-border/70">
-                      {[
-                        ['audit', 'Audit trail', 'Verify the hash chain', History],
-                        ['rules', 'Rule health', 'Override rates by rule', Activity],
-                        ['reliability', 'Reliability', 'Calls, verifier, eval', Cpu]
-                      ].map(([route, title, desc, Icon]) => (
+                  {/* 4 KPIs */}
+                  <div className="bs-kpi-grid">
+                    <div className="bs-kpi-cell">
+                      <p>{drafts.filter(d => d.status === 'In review').length}</p>
+                      <p>Awaiting review</p>
+                    </div>
+                    <div className="bs-kpi-cell">
+                      <p>{drafts.reduce((acc, d) => acc + d.findingCount, 0)}</p>
+                      <p>Findings</p>
+                    </div>
+                    <div className="bs-kpi-cell">
+                      <p>{drafts.filter(d => d.status === 'Changes requested').length}</p>
+                      <p>Decided</p>
+                    </div>
+                    <div className="bs-kpi-cell">
+                      <p>{drafts.filter(d => d.status === 'Approved').length}</p>
+                      <p>Approved</p>
+                    </div>
+                  </div>
+
+                  {/* Filter Sub-header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 24px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--muted-foreground)' }}>Submissions</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {['all', 'open'].map(mode => (
                         <button
-                          key={route}
-                          onClick={() => go(route)}
-                          className="group flex w-full items-center gap-3 py-3 text-left cursor-pointer"
+                          key={mode}
+                          onClick={() => setQueueFilter(mode)}
+                          style={{
+                            padding: '4px 8px',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '9px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.12em',
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: queueFilter === mode ? 'var(--foreground)' : 'transparent',
+                            color: queueFilter === mode ? 'var(--background)' : 'var(--muted-foreground)'
+                          }}
                         >
-                          <Icon className="size-4 text-muted-foreground" strokeWidth={1.5} />
-                          <div className="flex-1">
-                            <p className="text-[12px] leading-4">{title}</p>
-                            <p className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground">{desc}</p>
-                          </div>
-                          <ArrowRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                          {mode === 'all' ? 'All' : 'Open'}
                         </button>
                       ))}
                     </div>
-                  </section>
-
-                  {/* Dark Institutional Quote Card */}
-                  <section className="border border-border bg-[#1F1D1A] p-5 text-[#F4EFE6]">
-                    <BrandLogo compact={true} />
-                    <p className="mt-4 border-t border-[#F4EFE6]/20 pt-4 font-serif text-[19px] leading-[1.35]">
-                      “A finding that cannot show its evidence never reaches a human.”
-                    </p>
-                    <p className="mt-3 text-[10.5px] leading-5 text-[#F4EFE6]/60">
-                      Suppressed findings stay counted. The report tells you what the verifier removed and why.
-                    </p>
-                  </section>
-                </aside>
-              </div>
-            )}
-
-            {/* TAB: REVIEW DETAIL WORKSPACE */}
-            {page === 'review' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-border/80 pb-4">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => go('queue')}
-                      className="btn btn-outline h-8 rounded-none px-2.5 text-[11px] cursor-pointer"
-                    >
-                      ← Back to queue
-                    </button>
-                    <div>
-                      <h2 className="font-serif text-[24px] leading-none">{currentDraft.title}</h2>
-                      <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
-                        {currentDraft.channel} · Version {currentDraft.version} · Author: {currentDraft.creatorName}
-                      </p>
-                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {currentDraft.status === 'Approved' && (
-                      <button
-                        onClick={() => setReceiptModal(currentDraft)}
-                        className="btn btn-outline h-8 rounded-none text-[12px] cursor-pointer"
-                      >
-                        <Award className="mr-1.5 size-3.5" /> Official Receipt
-                      </button>
-                    )}
-                    <button
-                      onClick={handleApproveDraft}
-                      disabled={currentDraft.status === 'Approved'}
-                      className="btn btn-primary h-8 rounded-none text-[12px] cursor-pointer"
-                    >
-                      <CheckCheck className="mr-1.5 size-3.5" />
-                      {currentDraft.status === 'Approved' ? 'Signed & Approved' : 'Sign and approve'}
-                    </button>
+
+                  {/* Submissions List */}
+                  <div>
+                    {drafts
+                      .filter(d => queueFilter === 'all' ? true : d.status !== 'Approved')
+                      .map(s => (
+                        <div key={s.id} onClick={() => { setSelectedId(s.id); go('review'); }} className="bs-sub-row">
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="font-serif" style={{ fontSize: '18px', color: 'var(--foreground)' }}>{s.title}</span>
+                              {s.legalFlag && <span className="bs-tag bs-tag-red">Legal</span>}
+                            </div>
+                            <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-mono)', fontSize: '9.5px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>
+                              {s.channel} · v{s.version} · {s.creatorName} · {s.updatedAt}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <p className="font-serif" style={{ fontSize: '18px', margin: 0, lineHeight: 1 }}>{s.findingCount}</p>
+                              <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-mono)', fontSize: '8px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>findings</p>
+                            </div>
+                            <span className={`bs-tag ${s.status === 'Approved' ? 'bs-tag-green' : s.status === 'In review' ? 'bs-tag-amber' : 'bs-tag-subtle'}`}>
+                              {s.status}
+                            </span>
+                            <ArrowRight size={14} color="var(--muted-foreground)" />
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                  {/* Left: Content Editor */}
-                  <div className="paper p-5">
-                    <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                      <span className="label-caps">Draft content · live fast lane</span>
-                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-                        ⚡ {findings.length} findings detected
-                      </span>
-                    </div>
-
-                    <div className="mt-4">
-                      <textarea
-                        value={currentDraft.content}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDrafts(prev => prev.map(d => d.id === currentDraft.id ? { ...d, content: val } : d));
-                        }}
-                        rows={6}
-                        className="w-full border border-border bg-background p-3 font-serif text-[18px] leading-relaxed focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="mt-4 border-t border-border/70 pt-4">
-                      <p className="label-caps">Highlighted findings in context</p>
-                      <div className="mt-2 rounded bg-card p-3 font-serif text-[18px] leading-relaxed border border-border/60">
-                        {currentDraft.content}
-                      </div>
-                    </div>
+                {/* The Two Minute Path */}
+                <div className="bs-card" style={{ marginTop: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--muted-foreground)' }}>The two-minute path</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>Creator → Reviewer → Approver</span>
                   </div>
-
-                  {/* Right: Findings Panel */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-border/70 pb-2">
-                      <span className="label-caps">Evidence-backed findings ({findings.length})</span>
-                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#4F5C47]">
-                        ✓ All grounded
-                      </span>
-                    </div>
-
-                    {findings.map(f => (
-                      <div key={f.id} className="paper p-4 border border-border/80">
-                        <div className="flex items-center justify-between">
-                          <span className={`tag ${f.severity === 'Critical' ? 'tag-critical' : 'tag-amber'}`}>
-                            {f.severity}
-                          </span>
-                          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-                            {f.type}
-                          </span>
-                        </div>
-                        <p className="mt-2.5 text-[13px] leading-5 font-medium">{f.why}</p>
-                        <div className="mt-2.5 border-l-2 border-border pl-3 py-0.5">
-                          <p className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-muted-foreground">Rulebook Excerpt</p>
-                          <p className="mt-0.5 text-[11.5px] italic text-muted-foreground">{f.excerpt}</p>
-                        </div>
-                        <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5">
-                          <div className="font-mono text-[11px]">
-                            <span className="text-[#8F2F24] line-through">{f.phrase}</span> → <span className="text-[#4F5C47]">{f.fix}</span>
-                          </div>
-                          <span className="font-mono text-[9px] text-muted-foreground">intent {f.intentScore}</span>
-                        </div>
-                        <div className="mt-3 flex items-center gap-2">
-                          <button
-                            onClick={() => handleAcceptFinding(f)}
-                            className="btn btn-outline h-7 px-2.5 text-[11px] rounded-none cursor-pointer"
-                          >
-                            <Check className="mr-1 size-3" /> Accept fix
-                          </button>
-                        </div>
+                  <div className="bs-path-grid">
+                    {[
+                      ["01", "Submit", "Load the Lumora caption. Fast lane flags issues immediately."],
+                      ["02", "Review", "Specialist reviewers report. The verifier suppresses anything unsupported."],
+                      ["03", "Decide", "Accept, edit or reject. Approve with the Approver role."],
+                      ["04", "Receipt", "Export the PDF. Check the audit chain from the sidebar."]
+                    ].map(([n, t, d]) => (
+                      <div key={n} className="bs-path-cell">
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--muted-foreground)' }}>{n}</span>
+                        <h4 className="font-serif" style={{ fontSize: '17px', margin: '8px 0 4px' }}>{t}</h4>
+                        <p style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: 'var(--muted-foreground)' }}>{d}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* TAB: RULEBOOK & CLAIMS LEDGER */}
-            {page === 'rulebook' && (
-              <div className="space-y-8">
-                <KnowledgeBaseRAG tenantId="lumora-tenant" role={activeRole} />
-                <ClaimsLedger role={activeRole} />
-              </div>
-            )}
+              {/* Right Column: Brand Pack & Shortcuts */}
+              <aside style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Active Brand Pack */}
+                <div className="bs-card" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p className="label-caps" style={{ margin: 0 }}>Active brand pack</p>
+                    <span className="bs-tag bs-tag-green">Published</span>
+                  </div>
+                  <h3 className="font-serif" style={{ fontSize: '28px', margin: '12px 0 2px' }}>Lumora</h3>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9.5px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted-foreground)', margin: 0 }}>
+                    Edition 4 · Q4 2026
+                  </p>
+                  <div style={{ display: 'flex', gap: '6px', margin: '16px 0' }}>
+                    {["#1C1917", "#8F2F24", "#A9552F", "#4F5C47", "#D4C7B5"].map(hex => (
+                      <div key={hex} style={{ flex: 1, height: '28px', background: hex, border: '1px solid rgba(0,0,0,0.1)' }} title={hex} />
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: 'var(--border)' }}>
+                    {[["Rules", 14], ["Claims", 6], ["Expiring", 1], ["Model calls", 42]].map(([k, v]) => (
+                      <div key={k} style={{ background: 'var(--card)', padding: '12px 14px' }}>
+                        <p className="font-serif" style={{ fontSize: '20px', margin: 0, lineHeight: 1 }}>{v}</p>
+                        <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-mono)', fontSize: '8px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>{k}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => go('rulebook')} style={{ marginTop: '16px', background: 'none', border: 'none', borderBottom: '1px solid var(--foreground)', paddingBottom: '2px', fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.12em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    Open the rulebook <ArrowRight size={11} />
+                  </button>
+                </div>
 
-            {/* TAB: DRIFT & RULE HEALTH */}
-            {page === 'rules' && (
-              <div>
-                <RuleHealthDashboard />
-              </div>
-            )}
+                {/* Shortcuts */}
+                <div className="bs-card" style={{ padding: '24px' }}>
+                  <p className="label-caps" style={{ margin: '0 0 16px' }}>Shortcuts</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {[
+                      ['audit', 'Audit trail', 'Verify the hash chain', History],
+                      ['rules', 'Rule health', 'Override rates by rule', Activity],
+                      ['reliability', 'Reliability', 'Calls, verifier, eval', Cpu]
+                    ].map(([route, title, desc, Icon]) => (
+                      <div key={route} onClick={() => go(route)} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                        <Icon size={16} color="var(--muted-foreground)" />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: '12.5px', fontWeight: 500 }}>{title}</p>
+                          <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-mono)', fontSize: '8.5px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>{desc}</p>
+                        </div>
+                        <ArrowRight size={13} color="var(--muted-foreground)" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-            {/* TAB: RELIABILITY & RED-TEAM EVAL */}
-            {page === 'reliability' && (
-              <div>
-                <ReliabilityDashboard />
-              </div>
-            )}
+                {/* Black Paper Quote */}
+                <div className="bs-dark-card">
+                  <BrandLogo compact={true} />
+                  <p className="font-serif" style={{ fontSize: '19px', lineHeight: 1.4, margin: '16px 0 12px', borderTop: '1px solid rgba(244, 239, 230, 0.2)', paddingTop: '16px', color: '#f4efe6' }}>
+                    “A finding that cannot show its evidence never reaches a human.”
+                  </p>
+                  <p style={{ margin: 0, fontSize: '10.5px', lineHeight: 1.6, color: 'rgba(244, 239, 230, 0.65)' }}>
+                    Suppressed findings stay counted. The report tells you what the verifier removed and why.
+                  </p>
+                </div>
+              </aside>
+            </div>
+          )}
 
-            {/* TAB: API & WEBHOOKS */}
-            {page === 'api' && (
-              <div>
-                <ApiIntegrations />
+          {/* TAB: REVIEW DETAIL */}
+          {page === 'review' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <button onClick={() => go('queue')} className="bs-btn bs-btn-outline" style={{ fontSize: '12px', padding: '6px 12px' }}>
+                    ← Back to queue
+                  </button>
+                  <div>
+                    <h2 className="font-serif" style={{ fontSize: '24px', margin: 0 }}>{currentDraft.title}</h2>
+                    <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-mono)', fontSize: '9.5px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>
+                      {currentDraft.channel} · Version {currentDraft.version} · Author: {currentDraft.creatorName}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {currentDraft.status === 'Approved' && (
+                    <button onClick={() => setReceiptModal(currentDraft)} className="bs-btn bs-btn-outline">
+                      <Award size={14} /> View Receipt
+                    </button>
+                  )}
+                  <button onClick={handleApproveDraft} disabled={currentDraft.status === 'Approved'} className="bs-btn bs-btn-primary">
+                    <CheckCheck size={14} />
+                    {currentDraft.status === 'Approved' ? 'Signed & Approved' : 'Sign and approve'}
+                  </button>
+                </div>
               </div>
-            )}
 
-            {/* TAB: AUDIT CHAIN */}
-            {page === 'audit' && (
-              <div>
-                <AuditChainView />
-              </div>
-            )}
+              {/* Split Editor and Findings */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '24px', alignItems: 'start' }}>
+                <div className="bs-card" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                    <span className="label-caps">Draft content · live fast lane</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>
+                      ⚡ {findings.length} live issues
+                    </span>
+                  </div>
+                  <textarea
+                    value={currentDraft.content}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDrafts(prev => prev.map(d => d.id === currentDraft.id ? { ...d, content: val } : d));
+                    }}
+                    rows={7}
+                    style={{ width: '100%', marginTop: '16px', padding: '16px', background: 'var(--background)', border: '1px solid var(--border)', fontFamily: 'var(--font-serif)', fontSize: '19px', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                  <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                    <p className="label-caps" style={{ margin: '0 0 8px' }}>Active Fast-Lane Highlight Preview</p>
+                    <div style={{ padding: '14px', background: 'var(--card)', border: '1px solid var(--border)', fontFamily: 'var(--font-serif)', fontSize: '18px', lineHeight: 1.5 }}>
+                      {currentDraft.content}
+                    </div>
+                  </div>
+                </div>
 
-            {/* TAB: VISUAL STUDIO */}
-            {page === 'visual' && (
-              <div>
-                <VisualGovernanceStudio />
-              </div>
-            )}
+                {/* Findings Panel */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span className="label-caps">Evidence-backed findings ({findings.length})</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: '#4F5C47' }}>✓ All verified</span>
+                  </div>
 
-            {/* TAB: NEW SUBMISSION */}
-            {page === 'submit' && (
-              <div>
-                <SubmissionPage goTo={go} />
+                  {findings.map(f => (
+                    <div key={f.id} className="bs-card" style={{ padding: '18px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className={`bs-tag ${f.severity === 'Critical' ? 'bs-tag-red' : 'bs-tag-amber'}`}>{f.severity}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>{f.type}</span>
+                      </div>
+                      <p style={{ margin: '12px 0 6px', fontSize: '13px', lineHeight: 1.5, fontWeight: 500 }}>{f.why}</p>
+                      <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '10px', margin: '8px 0' }}>
+                        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '8.5px', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>Rulebook Excerpt</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '11px', fontStyle: 'italic', color: 'var(--muted-foreground)' }}>{f.excerpt}</p>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '10px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+                        <div>
+                          <span style={{ textDecoration: 'line-through', color: '#8F2F24' }}>{f.phrase}</span> → <span style={{ color: '#4F5C47' }}>{f.fix}</span>
+                        </div>
+                        <span style={{ fontSize: '9px', color: 'var(--muted-foreground)' }}>intent {f.intentScore}</span>
+                      </div>
+                      <button onClick={() => handleAcceptFinding(f)} className="bs-btn bs-btn-outline" style={{ marginTop: '12px', fontSize: '11px', padding: '5px 10px' }}>
+                        <Check size={12} /> Accept fix
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-          </main>
-        </div>
+            </div>
+          )}
+
+          {/* TAB: RULEBOOK & CLAIMS LEDGER */}
+          {page === 'rulebook' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              <KnowledgeBaseRAG tenantId="lumora-tenant" role={activeRole} />
+              <ClaimsLedger role={activeRole} />
+            </div>
+          )}
+
+          {/* TAB: DRIFT & RULE HEALTH */}
+          {page === 'rules' && <RuleHealthDashboard />}
+
+          {/* TAB: RELIABILITY */}
+          {page === 'reliability' && <ReliabilityDashboard />}
+
+          {/* TAB: API INTEGRATIONS */}
+          {page === 'api' && <ApiIntegrations />}
+
+          {/* TAB: AUDIT TRAIL */}
+          {page === 'audit' && <AuditChainView />}
+
+          {/* TAB: VISUAL STUDIO */}
+          {page === 'visual' && <VisualGovernanceStudio />}
+
+          {/* TAB: NEW SUBMISSION */}
+          {page === 'submit' && <SubmissionPage goTo={go} />}
+        </main>
       </div>
 
-      {/* Official Publication Receipt Modal */}
+      {/* Publication Receipt Modal */}
       {receiptModal && (
         <PublicationReceiptModal
           draft={receiptModal}
@@ -1212,7 +1034,6 @@ export default function App() {
     </div>
   );
 }
-
 
 createRoot(document.getElementById('root')).render(
   <AuthProvider>
