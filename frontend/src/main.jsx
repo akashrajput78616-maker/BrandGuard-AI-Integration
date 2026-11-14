@@ -210,7 +210,7 @@ function detectFindings(text) {
 
 const pageNotes = {
   queue: { title: "Review queue", note: "Everything waiting on a human decision." },
-  rulebook: { title: "Rulebook", note: "Published rules, claims and glossary." },
+  rulebook: { title: "Rulebook & Documents", note: "Published rules, claims ledger, and RAG guideline document ingestion." },
   rules: { title: "Drift & rule health", note: "Where reviewers disagree with the machine, and which channel is drifting." },
   api: { title: "API & webhooks", note: "Keys, signed events and the delivery log." },
   audit: { title: "Audit trail", note: "Append-only. Every row commits to the last." },
@@ -652,7 +652,7 @@ export default function App() {
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {[
             { id: 'queue', label: 'Review queue', icon: LayoutDashboard, count: drafts.filter(d => d.status === 'In review').length },
-            { id: 'rulebook', label: 'Rulebook', icon: BookOpen },
+            { id: 'rulebook', label: 'Rulebook & Documents', icon: BookOpen },
             { id: 'rules', label: 'Drift & rule health', icon: Activity },
             { id: 'audit', label: 'Audit trail', icon: History },
             { id: 'api', label: 'API & webhooks', icon: Key },
@@ -725,7 +725,10 @@ export default function App() {
               </select>
             </div>
 
-            <button onClick={() => { setSelectedId(1); go('review'); }} className="bs-btn bs-btn-primary" style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}>
+            <button onClick={() => go('rulebook')} className="bs-btn bs-btn-outline" style={{ height: '32px', padding: '0 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Upload size={13} /> Upload documents
+            </button>
+            <button onClick={() => { setSelectedId(1); go('review'); }} className="bs-btn bs-btn-primary" style={{ height: '32px', padding: '0 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Eye size={13} /> Review specimen
             </button>
           </div>
@@ -890,6 +893,7 @@ export default function App() {
                   <p className="label-caps" style={{ margin: '0 0 16px' }}>Shortcuts</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {[
+                      ['rulebook', 'Upload brand documents', 'RAG vector ingestion (PDF/DOCX)', Upload],
                       ['audit', 'Audit trail', 'Verify the hash chain', History],
                       ['rules', 'Rule health', 'Override rates by rule', Activity],
                       ['reliability', 'Reliability', 'Calls, verifier, eval', Cpu]
@@ -1011,7 +1015,7 @@ export default function App() {
           {/* TAB: RULEBOOK & CLAIMS LEDGER */}
           {page === 'rulebook' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              <KnowledgeBaseRAG tenantId="lumora-tenant" role={activeRole} />
+              <KnowledgeBaseRAG tenantId="default-tenant" role={activeRole} />
               <ClaimsLedger role={activeRole} />
             </div>
           )}

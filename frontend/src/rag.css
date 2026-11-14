@@ -69,10 +69,10 @@
 
 /* Upload Dropzone */
 .rag-dropzone {
-  border: 2px dashed #cbd5e1;
-  border-radius: 14px;
+  border: 2px dashed var(--line, #d9d2c8);
+  border-radius: 12px;
   padding: 36px 24px;
-  background: #f8fafc;
+  background: var(--surface, #fbf7f1);
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -80,14 +80,9 @@
   overflow: hidden;
 }
 
-.app.dark .rag-dropzone {
-  background: #0f172a;
-  border-color: #334155;
-}
-
 .rag-dropzone:hover, .rag-dropzone.active {
-  border-color: #0fa3a3;
-  background: rgba(15, 163, 163, 0.04);
+  border-color: #211d1a;
+  background: #eee9df;
 }
 
 .dropzone-prompt {
@@ -101,8 +96,8 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: rgba(15, 163, 163, 0.1);
-  color: #0fa3a3;
+  background: #eee9df;
+  color: #211d1a;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,18 +105,14 @@
 }
 
 .dropzone-prompt h4 {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   margin: 0;
-  color: var(--text-color, #0f172a);
-}
-
-.app.dark .dropzone-prompt h4 {
-  color: #f8fafc;
+  color: var(--ink, #211d1a);
 }
 
 .dropzone-prompt p {
-  color: #64748b;
+  color: var(--muted-foreground, #6b635c);
   font-size: 13px;
   margin: 0;
 }
